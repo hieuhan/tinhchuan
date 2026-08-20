@@ -20,7 +20,6 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           audience: ${{ secrets.TS_AUDIENCE }}
           tags: tag:ci
-          ping: hans-mac-mini
 
       - name: Kiểm tra Tailscale
         run: |
