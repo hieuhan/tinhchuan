@@ -4,8 +4,6 @@
 # TINHCHUAN.VN - DEPLOY SCRIPT
 #
 # Luồng:
-# GitHub
-#   ↓
 # GitHub Actions
 #   ↓
 # Tailscale
@@ -16,7 +14,9 @@
 #   ↓
 # deploy.sh
 #   ↓
-# Docker Compose / OrbStack
+# OrbStack / Docker Compose
+#   ↓
+# Nginx
 # =============================================================================
 
 set -euo pipefail
@@ -33,17 +33,13 @@ START_TIMESTAMP=$(date +%s)
 export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.orbstack/bin:$PATH"
 
 # =============================================================================
-# Colors
+# Logging
 # =============================================================================
 
 COLOR_GREEN='\033[0;32m'
 COLOR_RED='\033[0;31m'
 COLOR_YELLOW='\033[1;33m'
 COLOR_RESET='\033[0m'
-
-# =============================================================================
-# Logging
-# =============================================================================
 
 print_info() {
     echo -e "[DEPLOY] $1"
@@ -105,10 +101,12 @@ case "$DEPLOY_TARGET" in
         ;;
     *)
         print_error "Deploy target không hợp lệ: $DEPLOY_TARGET"
+
         print_error "Cách dùng:"
         print_error "  bash scripts/deploy.sh all"
         print_error "  bash scripts/deploy.sh frontend"
         print_error "  bash scripts/deploy.sh backend"
+
         exit 1
         ;;
 esac
@@ -134,7 +132,7 @@ date "+%Y-%m-%d %H:%M:%S"
 echo "============================================================================="
 
 # =============================================================================
-# Move to project directory
+# Change project directory
 # =============================================================================
 
 CURRENT_STEP="change project directory"
@@ -142,7 +140,7 @@ CURRENT_STEP="change project directory"
 cd "$PROJECT_DIRECTORY"
 
 # =============================================================================
-# Validate environment
+# Validate deployment environment
 # =============================================================================
 
 CURRENT_STEP="validate deployment environment"
@@ -162,6 +160,22 @@ echo "Git:"
 git --version
 
 print_success "Environment OK."
+
+# =============================================================================
+# Validate OrbStack Docker socket
+# =============================================================================
+
+CURRENT_STEP="validate orbstack"
+
+ORBSTACK_DOCKER_SOCKET="$HOME/.orbstack/run/docker.sock"
+
+if [ ! -S "$ORBSTACK_DOCKER_SOCKET" ]; then
+    print_error "Không tìm thấy Docker socket của OrbStack:"
+    print_error "$ORBSTACK_DOCKER_SOCKET"
+    exit 1
+fi
+
+print_success "OrbStack Docker socket OK."
 
 # =============================================================================
 # Validate Git repository
@@ -210,22 +224,6 @@ docker compose config -q
 print_success "Docker Compose configuration hợp lệ."
 
 # =============================================================================
-# Get current Nginx container ID
-# =============================================================================
-
-CURRENT_STEP="get nginx container"
-
-NGINX_CONTAINER_ID_BEFORE="$(
-    docker inspect \
-        --format='{{.Id}}' \
-        tinhchuan-nginx \
-        2>/dev/null || echo "none"
-)"
-
-print_info "Nginx container trước deploy:"
-echo "$NGINX_CONTAINER_ID_BEFORE"
-
-# =============================================================================
 # Build and deploy
 # =============================================================================
 
@@ -235,84 +233,93 @@ print_info "Đang build và khởi động: $DEPLOY_TARGET"
 
 case "$DEPLOY_TARGET" in
 
+    # =========================================================================
+    # Deploy toàn bộ
+    # =========================================================================
+
     all)
 
         print_info "Build và restart toàn bộ service..."
 
         docker compose up -d --build
 
+        print_success "Build và deploy toàn bộ service hoàn tất."
+
         ;;
+
+    # =========================================================================
+    # Deploy frontend
+    # =========================================================================
 
     frontend)
 
-        print_info "Build và restart frontend..."
+        print_info "Build frontend..."
 
         docker compose build frontend
 
-        docker compose up -d \
-            --no-deps \
-            frontend
+        print_info "Restart frontend..."
+
+        docker compose up -d --no-deps frontend
+
+        print_success "Frontend đã được deploy."
 
         ;;
 
+    # =========================================================================
+    # Deploy backend
+    # =========================================================================
+
     backend)
 
-        print_info "Build và restart backend..."
+        print_info "Build backend..."
 
         docker compose build backend
 
-        docker compose up -d \
-            --no-deps \
-            backend
+        print_info "Restart backend..."
+
+        docker compose up -d --no-deps backend
+
+        print_success "Backend đã được deploy."
 
         ;;
 
 esac
 
-print_success "Build và deploy hoàn tất."
-
 # =============================================================================
-# Check Nginx container
+# Restart Nginx
+#
+# Frontend/backend có thể được recreate với container/IP mới.
+# Nginx cần restart để resolve lại upstream/service endpoint.
 # =============================================================================
 
-CURRENT_STEP="check nginx container"
+CURRENT_STEP="restart nginx"
 
-NGINX_CONTAINER_ID_AFTER="$(
-    docker inspect \
-        --format='{{.Id}}' \
-        tinhchuan-nginx \
-        2>/dev/null || echo "none"
-)"
+print_info "Restart Nginx để cập nhật kết nối tới frontend/backend..."
 
-print_info "Nginx container sau deploy:"
-echo "$NGINX_CONTAINER_ID_AFTER"
+if ! docker inspect tinhchuan-nginx >/dev/null 2>&1; then
 
-# Nếu Nginx không được recreate thì restart để cập nhật network.
-if [
-    "$NGINX_CONTAINER_ID_BEFORE" = "$NGINX_CONTAINER_ID_AFTER"
-] && [
-    "$NGINX_CONTAINER_ID_BEFORE" != "none"
-]; then
+    print_error "Không tìm thấy container tinhchuan-nginx."
 
-    print_warning "Nginx không được recreate."
-
-    print_info "Restart Nginx để đảm bảo network configuration mới..."
-
-    docker restart tinhchuan-nginx
-
-    print_success "Nginx đã được restart."
+    exit 1
 
 fi
 
+docker restart tinhchuan-nginx
+
+print_success "Nginx đã được restart."
+
+# Chờ Nginx khởi động lại.
+sleep 5
+
 # =============================================================================
-# Wait for containers
+# Wait for services
 # =============================================================================
 
 CURRENT_STEP="wait for services"
 
 print_info "Đang chờ các service ổn định..."
 
-sleep 20
+sleep 15
 
 # =============================================================================
 # Health check
@@ -324,7 +331,6 @@ print_info "Đang kiểm tra trạng thái service..."
 
 FAILED_SERVICE_COUNT=0
 
-# Các container production hiện tại của TinhChuan.
 REQUIRED_CONTAINERS=(
     tinhchuan-postgres
     tinhchuan-redis
