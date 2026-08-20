@@ -1,39 +1,78 @@
 # =============================================================================
 # GITHUB ACTIONS - Tự động deploy lên Mac Mini qua Tailscale SSH
 # =============================================================================
+
 name: "🚀 Deploy TinhChuan.vn"
 
 on:
   push:
-    branches: [main]
-    paths-ignore: ['*.md', 'docs/**']   # Bỏ qua deploy nếu chỉ sửa tài liệu
-  workflow_dispatch:                     # Cho phép bấm nút deploy thủ công
+    branches:
+      - main
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+
+  workflow_dispatch:
     inputs:
       deploy_part:
-        description: 'Phần cần deploy'
+        description: "Phần cần deploy"
         required: true
-        default: 'all'
+        default: "all"
         type: choice
-        options: [all, frontend, backend]
+        options:
+          - all
+          - frontend
+          - backend
 
+# Không cho phép nhiều deployment production chạy đồng thời.
 concurrency:
   group: deploy-production
-  cancel-in-progress: true   # Hủy lần deploy cũ nếu có lần mới đang chờ
+  cancel-in-progress: true
+
+# GitHub OIDC cần quyền này để Tailscale xác thực workflow.
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
+    name: Deploy to Mac Mini
     runs-on: ubuntu-latest
-    timeout-minutes: 15   # Hủy job nếu chạy quá lâu, tránh treo tốn phút CI
+    timeout-minutes: 20
+
     steps:
-      - name: Kết nối Tailscale VPN
-        uses: tailscale/github-action@v3
+      # =========================================================================
+      # 1. Kết nối GitHub Actions với Tailscale
+      # =========================================================================
+      - name: Kết nối Tailscale
+        uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
           tags: tag:ci
 
-      - name: Chờ mạng Tailscale ổn định
-        run: sleep 10
+      # =========================================================================
+      # 2. Kiểm tra kết nối Tailscale
+      # =========================================================================
+      - name: Kiểm tra Tailscale
+        shell: bash
+        run: |
+          set -euo pipefail
 
+          echo "=== Tailscale status ==="
+          tailscale status
+
+          echo ""
+          echo "=== Tailscale IP ==="
+          tailscale ip -4
+
+          echo ""
+          echo "=== Mac Mini ==="
+          tailscale status | grep "100.109.109.5"
+
+      # =========================================================================
+      # 3. Deploy qua SSH tới Mac Mini
+      # =========================================================================
       - name: Deploy qua SSH tới Mac Mini
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -41,6 +80,55 @@ jobs:
           username: ${{ secrets.MAC_MINI_SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          timeout: 30s
+          command_timeout: 15m
+          script_stop: true
+
           script: |
-            cd ~/tinhchuan
-            bash scripts/deploy.sh ${{ github.event.inputs.deploy_part || 'all' }}
+            set -e
+
+            cd "$HOME/tinhchuan"
+
+            echo "========================================"
+            echo "TINHCHUAN.VN DEPLOYMENT"
+            echo "========================================"
+
+            echo "Hostname:"
+            hostname
+
+            echo ""
+            echo "User:"
+            whoami
+
+            echo ""
+            echo "Deploy part:"
+            echo "${{ github.event.inputs.deploy_part || 'all' }}"
+
+            echo ""
+            echo "GitHub commit:"
+            echo "${{ github.sha }}"
+
+            echo ""
+            echo "========================================"
+            echo "RUN DEPLOY SCRIPT"
+            echo "========================================"
+
+            bash scripts/deploy.sh \
+              "${{ github.event.inputs.deploy_part || 'all' }}"
+
+      # =========================================================================
+      # 4. Deployment hoàn tất
+      # =========================================================================
+      - name: Deployment completed
+        shell: bash
+        run: |
+          echo ""
+          echo "========================================"
+          echo "🚀 DEPLOYMENT COMPLETED"
+          echo "========================================"
+          echo ""
+          echo "Repository : $GITHUB_REPOSITORY"
+          echo "Commit     : $GITHUB_SHA"
+          echo "Branch     : $GITHUB_REF_NAME"
+          echo "Deploy part: ${{ github.event.inputs.deploy_part || 'all' }}"
+          echo ""
