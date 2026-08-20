@@ -1,40 +1,36 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# TINHCHUAN.VN - PRODUCTION DEPLOYMENT
+# TINHCHUAN.VN - DEPLOY SCRIPT
 #
-# Chạy trên Mac Mini thông qua:
-#
+# Luồng:
+# GitHub
+#   ↓
 # GitHub Actions
-#       ↓
+#   ↓
 # Tailscale
-#       ↓
+#   ↓
 # SSH
-#       ↓
-# scripts/deploy.sh
-#
-# Usage:
-#
-#   bash scripts/deploy.sh
-#   bash scripts/deploy.sh all
-#   bash scripts/deploy.sh frontend
-#   bash scripts/deploy.sh backend
+#   ↓
+# Mac Mini
+#   ↓
+# deploy.sh
+#   ↓
+# Docker Compose / OrbStack
 # =============================================================================
 
-set -Eeuo pipefail
+set -euo pipefail
 
 # =============================================================================
 # Configuration
 # =============================================================================
 
-PROJECT_DIRECTORY="${HOME}/tinhchuan"
-
+PROJECT_DIRECTORY="$HOME/tinhchuan"
 DEPLOY_TARGET="${1:-all}"
+START_TIMESTAMP=$(date +%s)
 
-START_TIMESTAMP="$(date +%s)"
-
-# Docker PATH cho macOS + Docker Desktop + OrbStack.
-export PATH="/usr/local/bin:/opt/homebrew/bin:/Applications/Docker.app/Contents/Resources/bin:$HOME/.orbstack/bin:$PATH"
+# PATH cho macOS + Homebrew + OrbStack.
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.orbstack/bin:$PATH"
 
 # =============================================================================
 # Colors
@@ -43,23 +39,26 @@ export PATH="/usr/local/bin:/opt/homebrew/bin:/Applications/Docker.app/Contents/
 COLOR_GREEN='\033[0;32m'
 COLOR_RED='\033[0;31m'
 COLOR_YELLOW='\033[1;33m'
-COLOR_BLUE='\033[0;34m'
 COLOR_RESET='\033[0m'
 
+# =============================================================================
+# Logging
+# =============================================================================
+
 print_info() {
-    echo -e "${COLOR_BLUE}[DEPLOY]${COLOR_RESET} $1"
+    echo -e "[DEPLOY] $1"
 }
 
 print_success() {
-    echo -e "${COLOR_GREEN}[DEPLOY]${COLOR_RESET} $1"
+    echo -e "${COLOR_GREEN}[DEPLOY] $1${COLOR_RESET}"
 }
 
 print_warning() {
-    echo -e "${COLOR_YELLOW}[DEPLOY]${COLOR_RESET} $1"
+    echo -e "${COLOR_YELLOW}[DEPLOY] $1${COLOR_RESET}"
 }
 
 print_error() {
-    echo -e "${COLOR_RED}[DEPLOY]${COLOR_RESET} $1"
+    echo -e "${COLOR_RED}[DEPLOY] $1${COLOR_RESET}"
 }
 
 # =============================================================================
@@ -72,14 +71,19 @@ handle_error() {
     local exit_code=$?
 
     echo ""
-    print_error "Deployment thất bại."
-    print_error "Step: ${CURRENT_STEP}"
-    print_error "Exit code: ${exit_code}"
+    print_error "========================================"
+    print_error "❌ DEPLOYMENT THẤT BẠI"
+    print_error "========================================"
+
+    print_error "Step: $CURRENT_STEP"
+    print_error "Exit code: $exit_code"
 
     echo ""
     print_error "Docker Compose status:"
 
     docker compose ps 2>/dev/null || true
+
+    echo ""
 
     exit "$exit_code"
 }
@@ -90,509 +94,363 @@ trap handle_error ERR
 # Validate deploy target
 # =============================================================================
 
-validate_deploy_target() {
-    CURRENT_STEP="validate deploy target"
+CURRENT_STEP="validate deploy target"
 
-    case "$DEPLOY_TARGET" in
-        all)
-            ;;
-        frontend)
-            ;;
-        backend)
-            ;;
-        *)
-            print_error "Deploy target không hợp lệ: ${DEPLOY_TARGET}"
-            print_error "Giá trị hợp lệ: all | frontend | backend"
-            exit 1
-            ;;
-    esac
+case "$DEPLOY_TARGET" in
+    all)
+        ;;
+    frontend)
+        ;;
+    backend)
+        ;;
+    *)
+        print_error "Deploy target không hợp lệ: $DEPLOY_TARGET"
+        print_error "Cách dùng:"
+        print_error "  bash scripts/deploy.sh all"
+        print_error "  bash scripts/deploy.sh frontend"
+        print_error "  bash scripts/deploy.sh backend"
+        exit 1
+        ;;
+esac
 
-    print_info "Deploy target: ${DEPLOY_TARGET}"
-}
+# =============================================================================
+# Header
+# =============================================================================
+
+echo ""
+echo "============================================================================="
+echo "🚀 TINHCHUAN.VN DEPLOYMENT"
+echo "============================================================================="
+
+echo "Project:"
+echo "$PROJECT_DIRECTORY"
+
+echo "Deploy target:"
+echo "$DEPLOY_TARGET"
+
+echo "Started:"
+date "+%Y-%m-%d %H:%M:%S"
+
+echo "============================================================================="
+
+# =============================================================================
+# Move to project directory
+# =============================================================================
+
+CURRENT_STEP="change project directory"
+
+cd "$PROJECT_DIRECTORY"
 
 # =============================================================================
 # Validate environment
 # =============================================================================
 
-validate_environment() {
-    CURRENT_STEP="validate environment"
+CURRENT_STEP="validate deployment environment"
 
-    print_info "Kiểm tra môi trường deploy..."
+print_info "Kiểm tra môi trường deploy..."
 
-    if [[ ! -d "$PROJECT_DIRECTORY" ]]; then
-        print_error "Không tìm thấy project: ${PROJECT_DIRECTORY}"
-        exit 1
-    fi
+echo "Docker:"
+docker --version
 
-    cd "$PROJECT_DIRECTORY"
+echo "Docker Compose:"
+docker compose version
 
-    if [[ ! -d ".git" ]]; then
-        print_error "Không phải Git repository: ${PROJECT_DIRECTORY}"
-        exit 1
-    fi
+echo "Docker Context:"
+docker context show
 
-    if [[ ! -f "docker-compose.yml" ]] &&
-       [[ ! -f "docker-compose.yaml" ]] &&
-       [[ ! -f "compose.yml" ]] &&
-       [[ ! -f "compose.yaml" ]]; then
+echo "Git:"
+git --version
 
-        print_error "Không tìm thấy Docker Compose file."
-        exit 1
-    fi
-
-    if ! command -v git >/dev/null 2>&1; then
-        print_error "Không tìm thấy Git."
-        exit 1
-    fi
-
-    if ! command -v docker >/dev/null 2>&1; then
-        print_error "Không tìm thấy Docker."
-        exit 1
-    fi
-
-    if ! docker info >/dev/null 2>&1; then
-        print_error "Docker daemon chưa chạy."
-        exit 1
-    fi
-
-    print_info "Docker:"
-    docker --version
-
-    print_info "Docker Compose:"
-    docker compose version
-
-    print_success "Environment OK."
-}
+print_success "Environment OK."
 
 # =============================================================================
-# Git information
+# Validate Git repository
 # =============================================================================
 
-show_git_information() {
-    CURRENT_STEP="git information"
+CURRENT_STEP="validate git repository"
 
-    cd "$PROJECT_DIRECTORY"
+echo "Git branch hiện tại:"
+git branch --show-current
 
-    print_info "Git branch hiện tại:"
-    git branch --show-current || true
+echo "Git commit hiện tại:"
+git rev-parse --short HEAD
 
-    print_info "Git commit hiện tại:"
-    git rev-parse --short HEAD
-
-    print_info "Git remote:"
-    git remote -v
-}
+echo "Git remote:"
+git remote -v
 
 # =============================================================================
 # Update source code
 # =============================================================================
 
-update_source_code() {
-    CURRENT_STEP="update source code"
+CURRENT_STEP="update source code"
 
-    cd "$PROJECT_DIRECTORY"
+print_info "Đang lấy code mới nhất từ GitHub..."
 
-    print_info "Đang lấy code mới nhất từ GitHub..."
+git fetch origin main
 
-    git fetch origin main
+print_info "Reset về origin/main..."
 
-    print_info "Reset về origin/main..."
+git reset --hard origin/main
 
-    git reset --hard origin/main
+print_success "Source code đã được cập nhật."
 
-    print_success "Source code đã được cập nhật."
-
-    print_info "Commit sau khi cập nhật:"
-    git rev-parse --short HEAD
-}
+echo "Commit sau khi cập nhật:"
+git rev-parse --short HEAD
 
 # =============================================================================
 # Validate Docker Compose
 # =============================================================================
 
-validate_docker_compose() {
-    CURRENT_STEP="validate docker compose"
+CURRENT_STEP="validate docker compose configuration"
 
-    cd "$PROJECT_DIRECTORY"
+print_info "Kiểm tra Docker Compose configuration..."
 
-    print_info "Kiểm tra Docker Compose configuration..."
+docker compose config -q
 
-    docker compose config -q
-
-    print_success "Docker Compose configuration hợp lệ."
-}
+print_success "Docker Compose configuration hợp lệ."
 
 # =============================================================================
-# Save Nginx container ID
+# Get current Nginx container ID
 # =============================================================================
 
-save_nginx_container_id() {
-    CURRENT_STEP="save nginx container"
+CURRENT_STEP="get nginx container"
 
-    NGINX_CONTAINER_ID_BEFORE="$(
-        docker inspect \
-            --format='{{.Id}}' \
-            tinhchuan-nginx \
-            2>/dev/null || echo "none"
-    )"
+NGINX_CONTAINER_ID_BEFORE="$(
+    docker inspect \
+        --format='{{.Id}}' \
+        tinhchuan-nginx \
+        2>/dev/null || echo "none"
+)"
 
-    print_info "Nginx container trước deploy: ${NGINX_CONTAINER_ID_BEFORE}"
-}
+print_info "Nginx container trước deploy:"
+echo "$NGINX_CONTAINER_ID_BEFORE"
 
 # =============================================================================
 # Build and deploy
 # =============================================================================
 
-deploy_services() {
-    CURRENT_STEP="build and deploy services"
+CURRENT_STEP="build and deploy services"
 
-    cd "$PROJECT_DIRECTORY"
+print_info "Đang build và khởi động: $DEPLOY_TARGET"
 
-    print_info "Đang build và khởi động: ${DEPLOY_TARGET}"
+case "$DEPLOY_TARGET" in
 
-    case "$DEPLOY_TARGET" in
+    all)
 
-        frontend)
-            print_info "Build frontend..."
+        print_info "Build và restart toàn bộ service..."
 
-            docker compose build frontend
+        docker compose up -d --build
 
-            print_info "Restart frontend..."
+        ;;
 
-            docker compose up -d --no-deps frontend
-            ;;
+    frontend)
 
-        backend)
-            print_info "Build backend..."
+        print_info "Build và restart frontend..."
 
-            docker compose build backend
+        docker compose build frontend
 
-            print_info "Restart backend..."
+        docker compose up -d \
+            --no-deps \
+            frontend
 
-            docker compose up -d --no-deps backend
-            ;;
+        ;;
 
-        all)
-            print_info "Build và restart toàn bộ service..."
+    backend)
 
-            docker compose up -d --build
-            ;;
+        print_info "Build và restart backend..."
 
-    esac
+        docker compose build backend
 
-    print_success "Build và deploy service hoàn tất."
-}
+        docker compose up -d \
+            --no-deps \
+            backend
 
-# =============================================================================
-# Restart Nginx
-# =============================================================================
+        ;;
 
-refresh_nginx() {
-    CURRENT_STEP="refresh nginx"
+esac
 
-    cd "$PROJECT_DIRECTORY"
-
-    NGINX_CONTAINER_ID_AFTER="$(
-        docker inspect \
-            --format='{{.Id}}' \
-            tinhchuan-nginx \
-            2>/dev/null || echo "none"
-    )"
-
-    print_info "Nginx container sau deploy: ${NGINX_CONTAINER_ID_AFTER}"
-
-    if [[ "$NGINX_CONTAINER_ID_BEFORE" == "$NGINX_CONTAINER_ID_AFTER" ]] &&
-       [[ "$NGINX_CONTAINER_ID_BEFORE" != "none" ]]; then
-
-        print_info "Nginx không được tạo lại."
-
-        print_info "Restart Nginx để cập nhật IP container mới..."
-
-        sleep 5
-
-        docker restart tinhchuan-nginx
-
-        print_success "Nginx đã được restart."
-    fi
-}
+print_success "Build và deploy hoàn tất."
 
 # =============================================================================
-# Wait for services
+# Check Nginx container
 # =============================================================================
 
-wait_for_services() {
-    CURRENT_STEP="wait for services"
+CURRENT_STEP="check nginx container"
 
-    print_info "Đang chờ các container ổn định trong 50 giây..."
+NGINX_CONTAINER_ID_AFTER="$(
+    docker inspect \
+        --format='{{.Id}}' \
+        tinhchuan-nginx \
+        2>/dev/null || echo "none"
+)"
 
-    sleep 50
+print_info "Nginx container sau deploy:"
+echo "$NGINX_CONTAINER_ID_AFTER"
 
-    print_success "Đã hoàn tất thời gian chờ."
-}
+# Nếu Nginx không được recreate thì restart để cập nhật network.
+if [
+    "$NGINX_CONTAINER_ID_BEFORE" = "$NGINX_CONTAINER_ID_AFTER"
+] && [
+    "$NGINX_CONTAINER_ID_BEFORE" != "none"
+]; then
 
-# =============================================================================
-# Check required application services
-#
-# Các service này bắt buộc phải healthy.
-#
-# Cloudflare Tunnel không nằm trong danh sách này vì tunnel là infrastructure
-# layer và healthcheck hiện tại có thể unhealthy dù container vẫn đang running.
-# =============================================================================
+    print_warning "Nginx không được recreate."
 
-check_required_services_health() {
-    CURRENT_STEP="required services health check"
+    print_info "Restart Nginx để đảm bảo network configuration mới..."
 
-    cd "$PROJECT_DIRECTORY"
+    docker restart tinhchuan-nginx
 
-    print_info "Kiểm tra health của application services..."
+    print_success "Nginx đã được restart."
 
-    local failed_service_count=0
-
-    local required_containers=(
-        "tinhchuan-postgres"
-        "tinhchuan-redis"
-        "tinhchuan-minio"
-        "tinhchuan-backend"
-        "tinhchuan-frontend"
-        "tinhchuan-nginx"
-    )
-
-    for container in "${required_containers[@]}"; do
-
-        local health_status
-
-        health_status="$(
-            docker inspect \
-                --format='{{.State.Health.Status}}' \
-                "$container" \
-                2>/dev/null || echo "không tìm thấy"
-        )"
-
-        if [[ "$health_status" != "healthy" ]]; then
-
-            print_error "❌ ${container}: ${health_status}"
-
-            failed_service_count=$((failed_service_count + 1))
-
-        else
-
-            print_success "✅ ${container}: healthy"
-
-        fi
-    done
-
-    if [[ "$failed_service_count" -gt 0 ]]; then
-
-        print_error "Có ${failed_service_count} application service không healthy."
-
-        return 1
-    fi
-
-    print_success "Tất cả application service đều healthy."
-}
+fi
 
 # =============================================================================
-# Check Cloudflare Tunnel
-#
-# Tunnel không block application deployment.
-# Chỉ cảnh báo nếu unhealthy/stopped.
+# Wait for containers
 # =============================================================================
 
-check_cloudflare_tunnel() {
-    CURRENT_STEP="cloudflare tunnel check"
+CURRENT_STEP="wait for services"
 
-    print_info "Kiểm tra Cloudflare Tunnel..."
+print_info "Đang chờ các service ổn định..."
 
-    local tunnel_container="tinhchuan-tunnel"
+sleep 20
 
-    local container_status
+# =============================================================================
+# Health check
+# =============================================================================
 
-    container_status="$(
-        docker inspect \
-            --format='{{.State.Status}}' \
-            "$tunnel_container" \
-            2>/dev/null || echo "không tìm thấy"
-    )"
+CURRENT_STEP="health check"
 
-    local health_status
+print_info "Đang kiểm tra trạng thái service..."
+
+FAILED_SERVICE_COUNT=0
+
+# Các container production hiện tại của TinhChuan.
+REQUIRED_CONTAINERS=(
+    tinhchuan-postgres
+    tinhchuan-redis
+    tinhchuan-minio
+    tinhchuan-backend
+    tinhchuan-frontend
+    tinhchuan-nginx
+)
+
+for container in "${REQUIRED_CONTAINERS[@]}"; do
 
     health_status="$(
         docker inspect \
-            --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
-            "$tunnel_container" \
-            2>/dev/null || echo "không tìm thấy"
+            --format='{{.State.Health.Status}}' \
+            "$container" \
+            2>/dev/null || echo "not_found"
     )"
 
-    echo ""
+    case "$health_status" in
 
-    case "$container_status" in
+        healthy)
 
-        running)
+            print_success "✅ $container: healthy"
 
-            if [[ "$health_status" == "healthy" ]]; then
+            ;;
 
-                print_success "✅ ${tunnel_container}: running / healthy"
+        starting)
 
-            elif [[ "$health_status" == "starting" ]]; then
+            print_warning "⏳ $container: starting"
 
-                print_warning "⚠️ ${tunnel_container}: running / healthcheck starting"
+            ;;
 
-            elif [[ "$health_status" == "unhealthy" ]]; then
+        not_found)
 
-                print_warning "⚠️ ${tunnel_container}: running / unhealthy"
-                print_warning "Cloudflare Tunnel không làm deployment thất bại."
+            print_error "❌ $container: not_found"
 
-            else
-
-                print_warning "⚠️ ${tunnel_container}: running / ${health_status}"
-
-            fi
+            FAILED_SERVICE_COUNT=$((FAILED_SERVICE_COUNT + 1))
 
             ;;
 
         *)
-            print_warning "⚠️ ${tunnel_container}: ${container_status}"
-            print_warning "Cloudflare Tunnel không làm deployment thất bại."
+
+            print_error "❌ $container: $health_status"
+
+            FAILED_SERVICE_COUNT=$((FAILED_SERVICE_COUNT + 1))
+
             ;;
 
     esac
 
-    echo ""
-
-    print_info "Cloudflare Tunnel logs gần nhất:"
-
-    docker logs \
-        --tail=20 \
-        "$tunnel_container" \
-        2>&1 || true
-}
+done
 
 # =============================================================================
-# Cleanup old Docker images
+# Docker Compose status
 # =============================================================================
 
-cleanup_docker_images() {
-    CURRENT_STEP="docker image cleanup"
+CURRENT_STEP="docker compose status"
 
-    print_info "Dọn image Docker cũ hơn 24 giờ..."
+echo ""
+print_info "Docker Compose status:"
 
-    docker image prune \
-        -f \
-        --filter "until=24h" \
-        2>/dev/null || true
-
-    print_success "Docker image cleanup hoàn tất."
-}
+docker compose ps
 
 # =============================================================================
-# Show deployment status
+# Cleanup old images
 # =============================================================================
 
-show_deployment_status() {
-    CURRENT_STEP="deployment status"
+CURRENT_STEP="cleanup docker images"
 
-    cd "$PROJECT_DIRECTORY"
+print_info "Đang dọn image Docker cũ..."
 
-    echo ""
-    echo "============================================================================="
-    echo "DEPLOYMENT STATUS"
-    echo "============================================================================="
+docker image prune \
+    -f \
+    --filter "until=24h" \
+    2>/dev/null || true
 
-    echo ""
-    echo "Deploy target:"
-    echo "$DEPLOY_TARGET"
-
-    echo ""
-    echo "Git commit:"
-    git rev-parse --short HEAD
-
-    echo ""
-    echo "Git branch:"
-    git branch --show-current
-
-    echo ""
-    echo "Docker containers:"
-    docker compose ps
-
-    echo "============================================================================="
-}
+print_success "Docker cleanup hoàn tất."
 
 # =============================================================================
-# Main
+# Calculate deployment time
 # =============================================================================
 
-main() {
+END_TIMESTAMP=$(date +%s)
+ELAPSED_SECONDS=$((END_TIMESTAMP - START_TIMESTAMP))
 
-    echo ""
-    echo "============================================================================="
-    echo "🚀 TINHCHUAN.VN DEPLOYMENT"
-    echo "============================================================================="
-    echo ""
-    echo "Project:"
-    echo "$PROJECT_DIRECTORY"
-    echo ""
-    echo "Deploy target:"
-    echo "$DEPLOY_TARGET"
-    echo ""
-    echo "Started:"
-    date '+%Y-%m-%d %H:%M:%S'
-    echo ""
-    echo "============================================================================="
-    echo ""
+# =============================================================================
+# Deployment result
+# =============================================================================
 
-    validate_deploy_target
+echo ""
 
-    validate_environment
+if [ "$FAILED_SERVICE_COUNT" -gt 0 ]; then
 
-    show_git_information
+    print_error "============================================================================="
+    print_error "❌ TRIỂN KHAI THẤT BẠI"
+    print_error "============================================================================="
 
-    update_source_code
+    print_error "Deploy target:"
+    print_error "$DEPLOY_TARGET"
 
-    validate_docker_compose
+    print_error "Commit:"
+    print_error "$(git rev-parse --short HEAD)"
 
-    save_nginx_container_id
+    print_error "Service lỗi:"
+    print_error "$FAILED_SERVICE_COUNT"
 
-    deploy_services
+    print_error "Thời gian:"
+    print_error "${ELAPSED_SECONDS} giây"
 
-    refresh_nginx
+    print_error "============================================================================="
 
-    wait_for_services
+    exit 1
 
-    # Application services bắt buộc phải healthy.
-    check_required_services_health
+fi
 
-    # Cloudflare Tunnel chỉ cảnh báo, không block deploy.
-    check_cloudflare_tunnel
+print_success "============================================================================="
+print_success "✅ TRIỂN KHAI THÀNH CÔNG"
+print_success "============================================================================="
 
-    cleanup_docker_images
+print_success "Deploy target:"
+print_success "$DEPLOY_TARGET"
 
-    show_deployment_status
+print_success "Commit:"
+print_success "$(git rev-parse --short HEAD)"
 
-    # -------------------------------------------------------------------------
-    # Tính thời gian deploy.
-    # -------------------------------------------------------------------------
+print_success "Thời gian:"
+print_success "${ELAPSED_SECONDS} giây"
 
-    local end_timestamp
-    local elapsed_seconds
-
-    end_timestamp="$(date +%s)"
-    elapsed_seconds=$((end_timestamp - START_TIMESTAMP))
-
-    echo ""
-    echo "============================================================================="
-    print_success "✅ TRIỂN KHAI THÀNH CÔNG"
-    echo "============================================================================="
-    echo ""
-    echo "Deploy target:"
-    echo "$DEPLOY_TARGET"
-    echo ""
-    echo "Commit:"
-    git rev-parse --short HEAD
-    echo ""
-    echo "Thời gian:"
-    echo "${elapsed_seconds} giây"
-    echo ""
-    echo "============================================================================="
-}
-
-main "$@"
+print_success "============================================================================="
