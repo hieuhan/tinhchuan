@@ -31,10 +31,10 @@ jobs:
           tailscale ip -4
 
           echo ""
-          echo "=== Ping Mac Mini ==="
-          tailscale ping hans-mac-mini
+          echo "=== Kiểm tra Mac Mini ==="
+          tailscale ip -1 hans-mac-mini
 
-      - name: Kiểm tra SSH tới Mac Mini
+      - name: Test SSH tới Mac Mini
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.MAC_MINI_SSH_HOST }}
