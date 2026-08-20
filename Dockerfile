@@ -14,12 +14,15 @@ RUN npm ci
 FROM base AS builder
 ARG APP_NAME
 ENV NEXT_TELEMETRY_DISABLED=1
-# DATABASE_URL giả CHỈ để thỏa mãn Prisma 7 config validation lúc build - lệnh
-# "prisma generate" đọc schema.prisma để sinh code, KHÔNG thật sự kết nối DB,
-# nhưng prisma.config.ts vẫn eager-validate biến này tồn tại. Giá trị thật lúc
-# chạy container lấy từ "environment:" trong docker-compose.yml, không liên
-# quan gì tới dòng ENV này.
-ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+# KHÔNG cần khai báo DATABASE_URL giả ở đây. "prisma generate" không kết nối
+# DB thật, chỉ đọc schema.prisma để sinh code - lý do trước đây phải bịa giá
+# trị giả là vì packages/database/prisma.config.ts dùng helper env('DATABASE_URL')
+# của Prisma, helper này ép buộc biến PHẢI tồn tại (throw PrismaConfigEnvError
+# nếu thiếu). Đã đổi sang process.env.DATABASE_URL (xem prisma.config.ts) -
+# trả về undefined thay vì throw, và từ Prisma 7.2.0 trở lên (dự án dùng 7.9.1)
+# "prisma generate" chấp nhận url undefined. Giá trị DATABASE_URL thật chỉ
+# thật sự bắt buộc khi chạy "prisma migrate deploy" lúc runtime, lấy từ
+# "environment:" trong docker-compose.yml, không liên quan bước build này.
 COPY package.json package-lock.json* ./
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY packages/ ./packages/

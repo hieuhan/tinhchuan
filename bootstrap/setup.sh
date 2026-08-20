@@ -256,12 +256,15 @@ RUN npm ci
 FROM base AS builder
 ARG APP_NAME
 ENV NEXT_TELEMETRY_DISABLED=1
-# DATABASE_URL giả CHỈ để thỏa mãn Prisma 7 config validation lúc build - lệnh
-# "prisma generate" đọc schema.prisma để sinh code, KHÔNG thật sự kết nối DB,
-# nhưng prisma.config.ts vẫn eager-validate biến này tồn tại. Giá trị thật lúc
-# chạy container lấy từ "environment:" trong docker-compose.yml, không liên
-# quan gì tới dòng ENV này.
-ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+# KHÔNG cần khai báo DATABASE_URL giả ở đây. "prisma generate" không kết nối
+# DB thật, chỉ đọc schema.prisma để sinh code - lý do trước đây phải bịa giá
+# trị giả là vì packages/database/prisma.config.ts dùng helper env('DATABASE_URL')
+# của Prisma, helper này ép buộc biến PHẢI tồn tại (throw PrismaConfigEnvError
+# nếu thiếu). Đã đổi sang process.env.DATABASE_URL (xem prisma.config.ts) -
+# trả về undefined thay vì throw, và từ Prisma 7.2.0 trở lên (dự án dùng 7.9.1)
+# "prisma generate" chấp nhận url undefined. Giá trị DATABASE_URL thật chỉ
+# thật sự bắt buộc khi chạy "prisma migrate deploy" lúc runtime, lấy từ
+# "environment:" trong docker-compose.yml, không liên quan bước build này.
 COPY package.json package-lock.json* ./
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY packages/ ./packages/
@@ -316,6 +319,9 @@ while true; do
         if pg_dump -h postgres -U "${DB_USER}" "${DB_NAME}" | gzip > "$backup_file_path"; then
             echo "[$(date)] ✅ Đã tạo backup: $backup_file_path"
             last_backup_date="$current_date"
+            # Chỉ giữ lại backup trong 7 ngày gần nhất, tự động xoá file cũ hơn
+            # để tránh đầy ổ đĩa SSD giới hạn của Mac Mini. "-mtime +7" nghĩa là
+            # thời gian sửa đổi file (mtime) lớn hơn 7 ngày trước thời điểm hiện tại.
             find /backups -name 'tinhchuan_*.sql.gz' -mtime +7 -delete
         else
             echo "[$(date)] ❌ Backup thất bại, sẽ thử lại ở vòng lặp sau"
@@ -649,137 +655,608 @@ ingress:
   - service: http_status:404
 EOF
 
-cat > scripts/deploy.sh << 'EOF'
+cat > scripts/deploy.sh << 'DEPLOY_SH_EOF'
 #!/usr/bin/env bash
+
 # =============================================================================
-# DEPLOY SCRIPT - Pull code, build, restart và kiểm tra sức khỏe
+# TINHCHUAN.VN - DEPLOY SCRIPT
+#
+# Luồng:
+# GitHub Actions
+#   ↓
+# Tailscale
+#   ↓
+# SSH
+#   ↓
+# Mac Mini
+#   ↓
+# deploy.sh
+#   ↓
+# OrbStack / Docker Compose
+#   ↓
+# Nginx
 # =============================================================================
+
 set -euo pipefail
 
-# Bổ sung PATH để tìm thấy docker trên macOS (Docker Desktop / OrbStack)
-export PATH="/usr/local/bin:/opt/homebrew/bin:/Applications/Docker.app/Contents/Resources/bin:$HOME/.orbstack/bin:$PATH"
+# =============================================================================
+# Configuration
+# =============================================================================
 
-COLOR_GREEN='\033[0;32m'; COLOR_RED='\033[0;31m'; COLOR_RESET='\033[0m'
-print_success() { echo -e "${COLOR_GREEN}[DEPLOY] $1${COLOR_RESET}"; }
-print_error()   { echo -e "${COLOR_RED}[DEPLOY] $1${COLOR_RESET}"; }
-
-PROJECT_DIRECTORY="${HOME}/tinhchuan"
-cd "$PROJECT_DIRECTORY"
-
+PROJECT_DIRECTORY="$HOME/tinhchuan"
 DEPLOY_TARGET="${1:-all}"
 START_TIMESTAMP=$(date +%s)
 
-# Lưu ID container Nginx trước khi deploy để so sánh sau (nếu backend/frontend
-# đổi container mới, Nginx cần restart lại để resolve đúng IP mới của chúng)
-NGINX_CONTAINER_ID_BEFORE=$(docker inspect --format='{{.Id}}' tinhchuan-nginx 2>/dev/null || echo "none")
+# PATH cho macOS + Homebrew + OrbStack.
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.orbstack/bin:$PATH"
 
-print_success "Đang pull code mới nhất từ Git..."
-git fetch origin main && git reset --hard origin/main
+# =============================================================================
+# Logging
+# =============================================================================
 
-print_success "Đang build và khởi động (${DEPLOY_TARGET})..."
+COLOR_GREEN='\033[0;32m'
+COLOR_RED='\033[0;31m'
+COLOR_YELLOW='\033[1;33m'
+COLOR_RESET='\033[0m'
+
+print_info() {
+    echo -e "[DEPLOY] $1"
+}
+
+print_success() {
+    echo -e "${COLOR_GREEN}[DEPLOY] $1${COLOR_RESET}"
+}
+
+print_warning() {
+    echo -e "${COLOR_YELLOW}[DEPLOY] $1${COLOR_RESET}"
+}
+
+print_error() {
+    echo -e "${COLOR_RED}[DEPLOY] $1${COLOR_RESET}"
+}
+
+# =============================================================================
+# Error handling
+# =============================================================================
+
+CURRENT_STEP="initialization"
+
+handle_error() {
+    local exit_code=$?
+
+    echo ""
+    print_error "========================================"
+    print_error "❌ DEPLOYMENT THẤT BẠI"
+    print_error "========================================"
+
+    print_error "Step: $CURRENT_STEP"
+    print_error "Exit code: $exit_code"
+
+    echo ""
+    print_error "Docker Compose status:"
+
+    docker compose ps 2>/dev/null || true
+
+    echo ""
+
+    exit "$exit_code"
+}
+
+trap handle_error ERR
+
+# =============================================================================
+# Validate deploy target
+# =============================================================================
+
+CURRENT_STEP="validate deploy target"
+
 case "$DEPLOY_TARGET" in
+    all)
+        ;;
     frontend)
-        docker compose build frontend
-        docker compose up -d --no-deps frontend
         ;;
     backend)
-        docker compose build backend
-        docker compose up -d --no-deps backend
-        ;;
-    all)
-        docker compose up -d --build
         ;;
     *)
-        print_error "Cách dùng: all | frontend | backend"; exit 1
+        print_error "Deploy target không hợp lệ: $DEPLOY_TARGET"
+
+        print_error "Cách dùng:"
+        print_error "  bash scripts/deploy.sh all"
+        print_error "  bash scripts/deploy.sh frontend"
+        print_error "  bash scripts/deploy.sh backend"
+
+        exit 1
         ;;
 esac
 
-# Nếu Nginx không bị tạo lại (deploy frontend/backend riêng lẻ), restart thủ
-# công để nó re-resolve đúng IP container mới của backend/frontend
-NGINX_CONTAINER_ID_AFTER=$(docker inspect --format='{{.Id}}' tinhchuan-nginx 2>/dev/null || echo "none")
-if [ "$NGINX_CONTAINER_ID_BEFORE" = "$NGINX_CONTAINER_ID_AFTER" ] && [ "$NGINX_CONTAINER_ID_BEFORE" != "none" ]; then
-    print_success "Đang khởi động lại Nginx để cập nhật IP container mới..."
-    sleep 5
-    docker restart tinhchuan-nginx
-fi
+# =============================================================================
+# Header
+# =============================================================================
 
-print_success "Đang chờ các container ổn định (50 giây)..."
-sleep 50
+echo ""
+echo "============================================================================="
+echo "🚀 TINHCHUAN.VN DEPLOYMENT"
+echo "============================================================================="
 
-# Chỉ kiểm tra các container có khai báo healthcheck (postgres/redis/minio/
-# nginx/tunnel qua docker-compose.yml, backend/frontend qua HEALTHCHECK trong
-# Dockerfile) - dozzle và postgres_backup không có healthcheck nên bỏ qua.
-FAILED_SERVICE_COUNT=0
-for container in tinhchuan-postgres tinhchuan-redis tinhchuan-minio tinhchuan-backend tinhchuan-frontend tinhchuan-nginx tinhchuan-tunnel; do
-    health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "không tìm thấy")
-    if [ "$health_status" != "healthy" ]; then
-        print_error "❌ ${container}: ${health_status}"
-        FAILED_SERVICE_COUNT=$((FAILED_SERVICE_COUNT + 1))
-    fi
-done
+echo "Project:"
+echo "$PROJECT_DIRECTORY"
 
-# Dọn image cũ (>24h, không còn container nào dùng) để giải phóng ổ cứng -
-# quan trọng trên Mac Mini 16GB vì mỗi lần build image mới sẽ để lại image cũ
-docker image prune -f --filter "until=24h" 2>/dev/null || true
+echo "Deploy target:"
+echo "$DEPLOY_TARGET"
 
-ELAPSED_SECONDS=$(( $(date +%s) - START_TIMESTAMP ))
-if [ "$FAILED_SERVICE_COUNT" -eq 0 ]; then
-    print_success "✅ Triển khai thành công (${ELAPSED_SECONDS} giây)"
-else
-    print_error "⚠️  Có ${FAILED_SERVICE_COUNT} dịch vụ không ổn định - kiểm tra 'make logs s=<tên>'"
+echo "Started:"
+date "+%Y-%m-%d %H:%M:%S"
+
+echo "============================================================================="
+
+# =============================================================================
+# Change project directory
+# =============================================================================
+
+CURRENT_STEP="change project directory"
+
+cd "$PROJECT_DIRECTORY"
+
+# =============================================================================
+# Validate deployment environment
+# =============================================================================
+
+CURRENT_STEP="validate deployment environment"
+
+print_info "Kiểm tra môi trường deploy..."
+
+echo "Docker:"
+docker --version
+
+echo "Docker Compose:"
+docker compose version
+
+echo "Docker Context:"
+docker context show
+
+echo "Git:"
+git --version
+
+print_success "Environment OK."
+
+# =============================================================================
+# Validate OrbStack Docker socket
+# =============================================================================
+
+CURRENT_STEP="validate orbstack"
+
+ORBSTACK_DOCKER_SOCKET="$HOME/.orbstack/run/docker.sock"
+
+if [ ! -S "$ORBSTACK_DOCKER_SOCKET" ]; then
+    print_error "Không tìm thấy Docker socket của OrbStack:"
+    print_error "$ORBSTACK_DOCKER_SOCKET"
     exit 1
 fi
-EOF
+
+print_success "OrbStack Docker socket OK."
+
+# =============================================================================
+# Validate Git repository
+# =============================================================================
+
+CURRENT_STEP="validate git repository"
+
+echo "Git branch hiện tại:"
+git branch --show-current
+
+echo "Git commit hiện tại:"
+git rev-parse --short HEAD
+
+echo "Git remote:"
+git remote -v
+
+# =============================================================================
+# Update source code
+# =============================================================================
+
+CURRENT_STEP="update source code"
+
+print_info "Đang lấy code mới nhất từ GitHub..."
+
+git fetch origin main
+
+print_info "Reset về origin/main..."
+
+git reset --hard origin/main
+
+print_success "Source code đã được cập nhật."
+
+echo "Commit sau khi cập nhật:"
+git rev-parse --short HEAD
+
+# =============================================================================
+# Validate Docker Compose
+# =============================================================================
+
+CURRENT_STEP="validate docker compose configuration"
+
+print_info "Kiểm tra Docker Compose configuration..."
+
+docker compose config -q
+
+print_success "Docker Compose configuration hợp lệ."
+
+# =============================================================================
+# Build and deploy
+# =============================================================================
+
+CURRENT_STEP="build and deploy services"
+
+print_info "Đang build và khởi động: $DEPLOY_TARGET"
+
+case "$DEPLOY_TARGET" in
+
+    # =========================================================================
+    # Deploy toàn bộ
+    # =========================================================================
+
+    all)
+
+        print_info "Build và restart toàn bộ service..."
+
+        docker compose up -d --build
+
+        print_success "Build và deploy toàn bộ service hoàn tất."
+
+        ;;
+
+    # =========================================================================
+    # Deploy frontend
+    # =========================================================================
+
+    frontend)
+
+        print_info "Build frontend..."
+
+        docker compose build frontend
+
+        print_info "Restart frontend..."
+
+        docker compose up -d --no-deps frontend
+
+        print_success "Frontend đã được deploy."
+
+        ;;
+
+    # =========================================================================
+    # Deploy backend
+    # =========================================================================
+
+    backend)
+
+        print_info "Build backend..."
+
+        docker compose build backend
+
+        print_info "Restart backend..."
+
+        docker compose up -d --no-deps backend
+
+        print_success "Backend đã được deploy."
+
+        ;;
+
+esac
+
+# =============================================================================
+# Restart Nginx
+#
+# Frontend/backend có thể được recreate với container/IP mới.
+# Nginx cần restart để resolve lại upstream/service endpoint.
+# =============================================================================
+
+CURRENT_STEP="restart nginx"
+
+print_info "Restart Nginx để cập nhật kết nối tới frontend/backend..."
+
+if ! docker inspect tinhchuan-nginx >/dev/null 2>&1; then
+
+    print_error "Không tìm thấy container tinhchuan-nginx."
+
+    exit 1
+
+fi
+
+docker restart tinhchuan-nginx
+
+print_success "Nginx đã được restart."
+
+# Chờ Nginx khởi động lại.
+sleep 5
+
+# =============================================================================
+# Wait for services
+# =============================================================================
+
+CURRENT_STEP="wait for services"
+
+print_info "Đang chờ các service ổn định..."
+
+sleep 15
+
+# =============================================================================
+# Health check
+# =============================================================================
+
+CURRENT_STEP="health check"
+
+print_info "Đang kiểm tra trạng thái service..."
+
+FAILED_SERVICE_COUNT=0
+
+REQUIRED_CONTAINERS=(
+    tinhchuan-postgres
+    tinhchuan-redis
+    tinhchuan-minio
+    tinhchuan-backend
+    tinhchuan-frontend
+    tinhchuan-nginx
+)
+
+for container in "${REQUIRED_CONTAINERS[@]}"; do
+
+    health_status="$(
+        docker inspect \
+            --format='{{.State.Health.Status}}' \
+            "$container" \
+            2>/dev/null || echo "not_found"
+    )"
+
+    case "$health_status" in
+
+        healthy)
+
+            print_success "✅ $container: healthy"
+
+            ;;
+
+        starting)
+
+            print_warning "⏳ $container: starting"
+
+            ;;
+
+        not_found)
+
+            print_error "❌ $container: not_found"
+
+            FAILED_SERVICE_COUNT=$((FAILED_SERVICE_COUNT + 1))
+
+            ;;
+
+        *)
+
+            print_error "❌ $container: $health_status"
+
+            FAILED_SERVICE_COUNT=$((FAILED_SERVICE_COUNT + 1))
+
+            ;;
+
+    esac
+
+done
+
+# =============================================================================
+# Docker Compose status
+# =============================================================================
+
+CURRENT_STEP="docker compose status"
+
+echo ""
+print_info "Docker Compose status:"
+
+docker compose ps
+
+# =============================================================================
+# Cleanup old images
+# =============================================================================
+
+CURRENT_STEP="cleanup docker images"
+
+print_info "Đang dọn image Docker cũ..."
+
+docker image prune \
+    -f \
+    --filter "until=24h" \
+    2>/dev/null || true
+
+print_success "Docker cleanup hoàn tất."
+
+# =============================================================================
+# Calculate deployment time
+# =============================================================================
+
+END_TIMESTAMP=$(date +%s)
+ELAPSED_SECONDS=$((END_TIMESTAMP - START_TIMESTAMP))
+
+# =============================================================================
+# Deployment result
+# =============================================================================
+
+echo ""
+
+if [ "$FAILED_SERVICE_COUNT" -gt 0 ]; then
+
+    print_error "============================================================================="
+    print_error "❌ TRIỂN KHAI THẤT BẠI"
+    print_error "============================================================================="
+
+    print_error "Deploy target:"
+    print_error "$DEPLOY_TARGET"
+
+    print_error "Commit:"
+    print_error "$(git rev-parse --short HEAD)"
+
+    print_error "Service lỗi:"
+    print_error "$FAILED_SERVICE_COUNT"
+
+    print_error "Thời gian:"
+    print_error "${ELAPSED_SECONDS} giây"
+
+    print_error "============================================================================="
+
+    exit 1
+
+fi
+
+print_success "============================================================================="
+print_success "✅ TRIỂN KHAI THÀNH CÔNG"
+print_success "============================================================================="
+
+print_success "Deploy target:"
+print_success "$DEPLOY_TARGET"
+
+print_success "Commit:"
+print_success "$(git rev-parse --short HEAD)"
+
+print_success "Thời gian:"
+print_success "${ELAPSED_SECONDS} giây"
+
+print_success "============================================================================="
+DEPLOY_SH_EOF
 chmod +x scripts/deploy.sh
 
-cat > .github/workflows/deploy.yml << 'EOF'
+cat > .github/workflows/deploy.yml << 'DEPLOY_YML_EOF'
 # =============================================================================
-# GITHUB ACTIONS - Tự động deploy lên Mac Mini qua Tailscale SSH
+# GITHUB ACTIONS - Tự động deploy TinhChuan.vn
+# GitHub Actions → Tailscale → SSH → Mac Mini → deploy.sh
 # =============================================================================
+
 name: "🚀 Deploy TinhChuan.vn"
 
 on:
   push:
-    branches: [main]
-    paths-ignore: ['*.md', 'docs/**']   # Bỏ qua deploy nếu chỉ sửa tài liệu
-  workflow_dispatch:                     # Cho phép bấm nút deploy thủ công
+    branches:
+      - main
+
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+
+  workflow_dispatch:
     inputs:
       deploy_part:
-        description: 'Phần cần deploy'
+        description: "Phần cần deploy"
         required: true
-        default: 'all'
+        default: "all"
         type: choice
-        options: [all, frontend, backend]
+        options:
+          - all
+          - frontend
+          - backend
+
+# GitHub OIDC permission.
+# Bắt buộc khi sử dụng Tailscale Workload Identity Federation.
+permissions:
+  id-token: write
+  contents: read
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: true   # Hủy lần deploy cũ nếu có lần mới đang chờ
+  cancel-in-progress: true
 
 jobs:
+
   deploy:
+    name: "Deploy to Mac Mini"
+
     runs-on: ubuntu-latest
-    timeout-minutes: 15   # Hủy job nếu chạy quá lâu, tránh treo tốn phút CI
+
+    timeout-minutes: 20
+
     steps:
-      - name: Kết nối Tailscale VPN
-        uses: tailscale/github-action@v3
+
+      # =======================================================================
+      # 1. Kết nối GitHub Runner vào Tailscale
+      # =======================================================================
+
+      - name: "🔐 Kết nối Tailscale"
+        uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
           tags: tag:ci
+          ping: ${{ secrets.MAC_MINI_SSH_HOST }}
 
-      - name: Chờ mạng Tailscale ổn định
-        run: sleep 10
+      # =======================================================================
+      # 2. Kiểm tra Tailscale
+      # =======================================================================
 
-      - name: Deploy qua SSH tới Mac Mini
+      - name: "🔎 Kiểm tra Tailscale"
+        run: |
+          set -e
+
+          echo "========================================"
+          echo "TAILSCALE STATUS"
+          echo "========================================"
+
+          tailscale status
+
+          echo ""
+          echo "========================================"
+          echo "TAILSCALE IP"
+          echo "========================================"
+
+          tailscale ip -4
+
+      # =======================================================================
+      # 3. SSH tới Mac Mini
+      # =======================================================================
+
+      - name: "🚀 Deploy qua SSH"
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.MAC_MINI_SSH_HOST }}
           username: ${{ secrets.MAC_MINI_SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+
           port: 22
+
+          timeout: 30s
+
+          command_timeout: 15m
+
+          script_stop: true
+
           script: |
-            cd ~/tinhchuan
-            bash scripts/deploy.sh ${{ github.event.inputs.deploy_part || 'all' }}
-EOF
+            set -e
+
+            PROJECT_DIRECTORY="$HOME/tinhchuan"
+            DEPLOY_PART="${{ github.event.inputs.deploy_part || 'all' }}"
+
+            echo "========================================"
+            echo "TINHCHUAN.VN DEPLOYMENT"
+            echo "========================================"
+
+            echo "Hostname:"
+            hostname
+
+            echo ""
+            echo "User:"
+            whoami
+
+            echo ""
+            echo "Deploy part:"
+            echo "$DEPLOY_PART"
+
+            echo ""
+            echo "GitHub commit:"
+            echo "${{ github.sha }}"
+
+            echo ""
+            echo "========================================"
+            echo "RUN DEPLOY SCRIPT"
+            echo "========================================"
+
+            cd "$PROJECT_DIRECTORY"
+
+            bash scripts/deploy.sh "$DEPLOY_PART"
+DEPLOY_YML_EOF
 print_success "   ✅ Đã tạo Makefile, .env, CI/CD."
 
 # =============================================================================
