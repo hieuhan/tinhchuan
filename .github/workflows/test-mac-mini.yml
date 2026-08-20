@@ -1,39 +1,3 @@
-name: "🔐 Test Tailscale SSH"
-
-on:
-  workflow_dispatch:
-
-permissions:
-  id-token: write
-  contents: read
-
-jobs:
-  test-tailscale-ssh:
-    name: Test Tailscale + SSH
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Kết nối Tailscale
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
-          tags: tag:ci
-
-      - name: Kiểm tra Tailscale
-        run: |
-          echo "=== Tailscale status ==="
-          tailscale status
-
-          echo ""
-          echo "=== Tailscale IP ==="
-          tailscale ip -4
-
-          echo ""
-          echo "=== Kiểm tra Mac Mini ==="
-          tailscale ip -1 hans-mac-mini
-
       - name: Test SSH tới Mac Mini
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -55,11 +19,15 @@ jobs:
             echo "OS:"
             sw_vers
 
-            echo "Tailscale IP:"
-            tailscale ip -4
+            echo "Home:"
+            echo "$HOME"
+
+            echo "PATH:"
+            echo "$PATH"
 
             echo "Docker:"
-            docker --version
+            command -v docker || true
+            docker --version || true
 
             echo "Docker containers:"
-            docker ps
+            docker ps || true
