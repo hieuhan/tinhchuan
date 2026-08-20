@@ -1,4 +1,4 @@
-name: "🔌 Test Mac Mini Connection"
+name: "🔍 Debug GitHub OIDC"
 
 on:
   workflow_dispatch:
@@ -8,52 +8,45 @@ permissions:
   contents: read
 
 jobs:
-  test-connection:
-    name: Test Tailscale + SSH
+  debug-oidc:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
-      - name: Kết nối Tailscale
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
-          tags: tag:ci
-          ping: hans-mac-mini
-
-      - name: Kiểm tra Tailscale
+      - name: Lấy GitHub OIDC token
+        id: oidc
+        shell: bash
         run: |
-          echo "=== Tailscale status ==="
-          tailscale status
+          OIDC_TOKEN=$(curl -sSf \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api.tailscale.com")
 
-          echo "=== Tailscale ping ==="
-          tailscale ping hans-mac-mini
+          echo "OIDC token received"
 
-      - name: Test SSH tới Mac Mini
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.MAC_MINI_SSH_HOST }}
-          username: ${{ secrets.MAC_MINI_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 60s
-          script: |
-            echo "=== Hostname ==="
-            hostname
+          PAYLOAD=$(echo "$OIDC_TOKEN" | cut -d '.' -f2)
 
-            echo "=== User ==="
-            whoami
+          PAYLOAD=$(python3 -c "
+          import base64
+          import json
+          import sys
 
-            echo "=== OS ==="
-            sw_vers
+          value = sys.stdin.read().strip()
+          value += '=' * (-len(value) % 4)
 
-            echo "=== Tailscale IP ==="
-            tailscale ip -4
+          data = base64.urlsafe_b64decode(value)
+          claims = json.loads(data)
 
-            echo "=== Docker ==="
-            docker --version
+          safe_claims = {
+              'iss': claims.get('iss'),
+              'sub': claims.get('sub'),
+              'aud': claims.get('aud'),
+              'repository': claims.get('repository'),
+              'repository_id': claims.get('repository_id'),
+              'repository_owner': claims.get('repository_owner'),
+              'repository_owner_id': claims.get('repository_owner_id'),
+              'ref': claims.get('ref'),
+              'workflow': claims.get('workflow'),
+              'event_name': claims.get('event_name')
+          }
 
-            echo "=== Docker containers ==="
-            docker ps
+          print(json.dumps(safe_claims, indent=2))
+          " <<< "$PAYLOAD"
