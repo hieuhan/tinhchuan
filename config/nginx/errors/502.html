@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>502</title>
+<style>body{font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f8fafc}
+.box{text-align:center;max-width:480px;padding:1.5rem}h1{font-size:3rem;margin:0}p{color:#6b7280;line-height:1.6}
+.countdown{font-weight:600;color:#3b82f6}</style></head>
+<body><div class="box"><h1>🔄 502</h1>
+<p>Hệ thống đang khởi động lại. Trang sẽ tự tải lại sau <span class="countdown" id="cd">5</span> giây.</p></div>
+<script>var s=5;setInterval(()=>{s--;document.getElementById('cd').textContent=s;if(s<=0)location.reload()},1000)</script>
+</body></html>

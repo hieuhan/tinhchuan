@@ -1,0 +1,14 @@
+{
+  "name": "@tinhchuan/backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "dev": "next dev -p 3001", "build": "next build", "start": "next start -p 3001" },
+  "dependencies": {
+    "@tinhchuan/database": "*", "next": "16.3.0", "react": "19.2.0", "react-dom": "19.2.0", "zod": "4.4.3",
+    "bcryptjs": "^2.4.3", "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0", "@types/react": "^19.0.0", "@types/bcryptjs": "^2.4.6",
+    "typescript": "^5.7.0"
+  }
+}

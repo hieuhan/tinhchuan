@@ -1,0 +1,10 @@
+ingress:
+  - hostname: tinhchuan.vn
+    service: http://nginx:80
+  - hostname: www.tinhchuan.vn
+    service: http://nginx:80
+  - hostname: admin.tinhchuan.vn
+    service: http://nginx:80
+  - hostname: cdn.tinhchuan.vn
+    service: http://nginx:80
+  - service: http_status:404

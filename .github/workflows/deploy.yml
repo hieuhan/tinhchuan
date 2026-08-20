@@ -1,0 +1,46 @@
+# =============================================================================
+# GITHUB ACTIONS - Tự động deploy lên Mac Mini qua Tailscale SSH
+# =============================================================================
+name: "🚀 Deploy TinhChuan.vn"
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['*.md', 'docs/**']   # Bỏ qua deploy nếu chỉ sửa tài liệu
+  workflow_dispatch:                     # Cho phép bấm nút deploy thủ công
+    inputs:
+      deploy_part:
+        description: 'Phần cần deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options: [all, frontend, backend]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true   # Hủy lần deploy cũ nếu có lần mới đang chờ
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15   # Hủy job nếu chạy quá lâu, tránh treo tốn phút CI
+    steps:
+      - name: Kết nối Tailscale VPN
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          tags: tag:ci
+
+      - name: Chờ mạng Tailscale ổn định
+        run: sleep 10
+
+      - name: Deploy qua SSH tới Mac Mini
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.MAC_MINI_SSH_HOST }}
+          username: ${{ secrets.MAC_MINI_SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd ~/tinhchuan
+            bash scripts/deploy.sh ${{ github.event.inputs.deploy_part || 'all' }}
