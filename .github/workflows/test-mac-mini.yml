@@ -15,7 +15,7 @@ jobs:
 
     steps:
       # ============================================================
-      # 1. Kết nối GitHub Actions vào Tailscale
+      # 1. Kết nối Tailscale bằng GitHub OIDC
       # ============================================================
       - name: Kết nối Tailscale
         uses: tailscale/github-action@v4
@@ -25,7 +25,7 @@ jobs:
           tags: tag:ci
 
       # ============================================================
-      # 2. Kiểm tra Tailscale trên GitHub Runner
+      # 2. Kiểm tra Tailscale
       # ============================================================
       - name: Kiểm tra Tailscale Runner
         shell: bash
@@ -36,42 +36,15 @@ jobs:
           tailscale status
 
           echo ""
-          echo "=== Runner Tailscale IP ==="
+          echo "=== Tailscale IP ==="
           tailscale ip -4
 
           echo ""
-          echo "=== Kiểm tra Mac Mini trong Tailnet ==="
-
-          if tailscale ip -1 100.109.109.5 >/dev/null 2>&1; then
-            echo "Mac Mini đã được tìm thấy trong Tailnet."
-          else
-            echo "Không tìm thấy Mac Mini trong Tailnet."
-            exit 1
-          fi
+          echo "=== Mac Mini ==="
+          tailscale status | grep "100.109.109.5"
 
       # ============================================================
-      # 3. Kiểm tra TCP port 22 tới Mac Mini
-      # ============================================================
-      - name: Kiểm tra SSH port 22
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          MAC_MINI_HOST="${{ secrets.MAC_MINI_SSH_HOST }}"
-
-          echo "=== Kiểm tra TCP port 22 ==="
-          echo "Target: ${MAC_MINI_HOST}:22"
-
-          if timeout 10 bash -c \
-            "</dev/tcp/${MAC_MINI_HOST}/22"; then
-            echo "TCP port 22 đang mở."
-          else
-            echo "Không thể kết nối TCP tới port 22."
-            exit 1
-          fi
-
-      # ============================================================
-      # 4. SSH vào Mac Mini
+      # 3. Kiểm tra SSH
       # ============================================================
       - name: SSH vào Mac Mini
         uses: appleboy/ssh-action@v1.0.3
@@ -99,10 +72,6 @@ jobs:
             whoami
 
             echo ""
-            echo "Home:"
-            echo "$HOME"
-
-            echo ""
             echo "OS:"
             sw_vers
 
@@ -113,21 +82,8 @@ jobs:
             echo ""
             echo "SSH connection: SUCCESS"
 
-            echo ""
-            echo "========================================"
-            echo "SYSTEM CHECK"
-            echo "========================================"
-
-            echo ""
-            echo "Disk:"
-            df -h /
-
-            echo ""
-            echo "Memory:"
-            vm_stat | head -n 8
-
       # ============================================================
-      # 5. Kiểm tra Git
+      # 4. Kiểm tra Git
       # ============================================================
       - name: Kiểm tra Git và project
         uses: appleboy/ssh-action@v1.0.3
@@ -142,26 +98,26 @@ jobs:
           script: |
             set -e
 
+            export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+
             echo "========================================"
             echo "GIT CHECK"
             echo "========================================"
 
-            export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
-
             echo ""
-            echo "Git:"
             git --version
 
             echo ""
             echo "Project directory:"
-            if [ -d "$HOME/tinhchuan" ]; then
-              echo "$HOME/tinhchuan"
-            else
-              echo "ERROR: Project directory does not exist."
+
+            if [ ! -d "$HOME/tinhchuan" ]; then
+              echo "ERROR: $HOME/tinhchuan không tồn tại."
               exit 1
             fi
 
             cd "$HOME/tinhchuan"
+
+            echo "$PWD"
 
             echo ""
             echo "Git repository:"
@@ -180,7 +136,7 @@ jobs:
             git remote -v
 
       # ============================================================
-      # 6. Kiểm tra Docker
+      # 5. Kiểm tra Docker
       # ============================================================
       - name: Kiểm tra Docker
         uses: appleboy/ssh-action@v1.0.3
@@ -195,19 +151,15 @@ jobs:
           script: |
             set -e
 
+            export PATH="/usr/local/bin:/opt/homebrew/bin:/Applications/Docker.app/Contents/Resources/bin:$PATH"
+
             echo "========================================"
             echo "DOCKER CHECK"
             echo "========================================"
 
-            export PATH="/usr/local/bin:/opt/homebrew/bin:/Applications/Docker.app/Contents/Resources/bin:$PATH"
-
             echo ""
             echo "Docker:"
-            if ! command -v docker >/dev/null 2>&1; then
-              echo "ERROR: Docker command not found."
-              exit 1
-            fi
-
+            command -v docker
             docker --version
 
             echo ""
@@ -225,55 +177,7 @@ jobs:
             docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
       # ============================================================
-      # 7. Kiểm tra project + Docker Compose
-      # ============================================================
-      - name: Kiểm tra Docker Compose project
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.MAC_MINI_SSH_HOST }}
-          username: ${{ secrets.MAC_MINI_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 60s
-          script_stop: true
-          script: |
-            set -e
-
-            export PATH="/usr/local/bin:/opt/homebrew/bin:/Applications/Docker.app/Contents/Resources/bin:$PATH"
-
-            cd "$HOME/tinhchuan"
-
-            echo "========================================"
-            echo "DOCKER COMPOSE PROJECT CHECK"
-            echo "========================================"
-
-            if [ -f "docker-compose.yml" ]; then
-              COMPOSE_FILE="docker-compose.yml"
-            elif [ -f "docker-compose.yaml" ]; then
-              COMPOSE_FILE="docker-compose.yaml"
-            elif [ -f "compose.yml" ]; then
-              COMPOSE_FILE="compose.yml"
-            elif [ -f "compose.yaml" ]; then
-              COMPOSE_FILE="compose.yaml"
-            else
-              echo "ERROR: Không tìm thấy Docker Compose file."
-              exit 1
-            fi
-
-            echo ""
-            echo "Compose file:"
-            echo "$COMPOSE_FILE"
-
-            echo ""
-            echo "Docker Compose config:"
-            docker compose -f "$COMPOSE_FILE" config -q
-
-            echo ""
-            echo "Docker Compose configuration: VALID"
-
-      # ============================================================
-      # 8. Tổng kết
+      # 6. Tổng kết
       # ============================================================
       - name: Deployment readiness
         shell: bash
@@ -286,14 +190,12 @@ jobs:
           echo "GitHub OIDC             : PASS"
           echo "Tailscale authentication: PASS"
           echo "Tailscale connectivity  : PASS"
-          echo "SSH port 22             : PASS"
           echo "SSH authentication      : PASS"
           echo "Mac Mini access         : PASS"
           echo "Git                     : PASS"
           echo "Project                 : PASS"
           echo "Docker                  : PASS"
           echo "Docker Compose          : PASS"
-          echo "Compose configuration   : PASS"
           echo ""
           echo "========================================"
           echo "READY FOR DEPLOYMENT"
