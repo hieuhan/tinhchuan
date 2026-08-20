@@ -6,15 +6,14 @@
 name: "🚀 Deploy TinhChuan.vn"
 
 on:
-  # Tự động deploy khi push vào main.
   push:
     branches:
       - main
+
     paths-ignore:
       - "*.md"
       - "docs/**"
 
-  # Cho phép deploy thủ công từ GitHub Actions.
   workflow_dispatch:
     inputs:
       deploy_part:
@@ -27,45 +26,44 @@ on:
           - frontend
           - backend
 
-# Không cho phép nhiều deployment chạy đồng thời.
+# GitHub OIDC permission.
+# Bắt buộc khi sử dụng Tailscale Workload Identity Federation.
+permissions:
+  id-token: write
+  contents: read
+
 concurrency:
   group: deploy-production
   cancel-in-progress: true
 
 jobs:
+
   deploy:
     name: "Deploy to Mac Mini"
+
     runs-on: ubuntu-latest
 
-    # Giới hạn thời gian tối đa của toàn bộ job.
     timeout-minutes: 20
 
     steps:
 
-      # =========================================================================
+      # =======================================================================
       # 1. Kết nối GitHub Runner vào Tailscale
-      # =========================================================================
+      # =======================================================================
 
       - name: "🔐 Kết nối Tailscale"
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
           tags: tag:ci
+          ping: ${{ secrets.MAC_MINI_SSH_HOST }}
 
-      # =========================================================================
-      # 2. Chờ mạng Tailscale ổn định
-      # =========================================================================
+      # =======================================================================
+      # 2. Kiểm tra Tailscale
+      # =======================================================================
 
-      - name: "⏳ Chờ Tailscale ổn định"
-        run: sleep 10
-
-      # =========================================================================
-      # 3. Kiểm tra kết nối tới Mac Mini
-      # =========================================================================
-
-      - name: "🔎 Kiểm tra Mac Mini"
-        env:
-          MAC_MINI_HOST: ${{ secrets.MAC_MINI_SSH_HOST }}
+      - name: "🔎 Kiểm tra Tailscale"
         run: |
           set -e
 
@@ -77,30 +75,28 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "PING MAC MINI"
+          echo "TAILSCALE IP"
           echo "========================================"
 
-          tailscale ping "$MAC_MINI_HOST"
+          tailscale ip -4
 
-      # =========================================================================
-      # 4. SSH vào Mac Mini và chạy deploy.sh
-      # =========================================================================
+      # =======================================================================
+      # 3. SSH tới Mac Mini
+      # =======================================================================
 
-      - name: "🚀 Deploy qua SSH tới Mac Mini"
+      - name: "🚀 Deploy qua SSH"
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.MAC_MINI_SSH_HOST }}
           username: ${{ secrets.MAC_MINI_SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+
           port: 22
 
-          # Timeout kết nối SSH.
           timeout: 30s
 
-          # Thời gian tối đa cho deploy.sh.
           command_timeout: 15m
 
-          # Dừng ngay nếu script trả về exit code khác 0.
           script_stop: true
 
           script: |
