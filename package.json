@@ -7,6 +7,8 @@
     "dev:frontend": "npm run dev --workspace=apps/frontend",
     "dev:backend": "npm run dev --workspace=apps/backend",
     "db:generate": "npm run db:generate --workspace=packages/database",
-    "db:push": "npm run db:push --workspace=packages/database"
+    "db:push": "npm run db:push --workspace=packages/database",
+    "db:migrate": "npm run db:migrate --workspace=packages/database",
+    "db:studio": "npm run db:studio --workspace=packages/database"
   }
 }

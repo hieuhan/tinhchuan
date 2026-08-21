@@ -1,19 +1,21 @@
 {
   "name": "@tinhchuan/database",
   "version": "1.0.0",
+  "private": true,
   "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev"
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@prisma/client": "7.9.1",
-    "@prisma/adapter-pg": "7.9.1",
-    "pg": "^8.13.0"
+    "drizzle-orm": "0.45.2",
+    "pg": "8.23.0"
   },
   "devDependencies": {
-    "prisma": "7.9.1",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.7.0",
     "tsx": "^4.19.0",
     "@types/pg": "^8.11.0",

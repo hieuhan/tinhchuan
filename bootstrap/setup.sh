@@ -34,14 +34,15 @@ print_success "📍 Thư mục gốc dự án: ${PROJECT_ROOT_DIRECTORY}"
 print_step "📁 [Bước 1/9] Đang tạo cấu trúc thư mục..."
 mkdir -p config/postgres/init config/redis config/nginx/conf.d config/nginx/errors \
          config/nginx/snippets config/cloudflare
-mkdir -p .github/workflows scripts bootstrap
+mkdir -p scripts bootstrap
 mkdir -p data/postgres data/redis data/minio data/nginx-cache
 mkdir -p logs/postgres logs/nginx logs/backend logs/frontend
 mkdir -p backups
-mkdir -p packages/database/prisma packages/database/src
-mkdir -p apps/frontend/app apps/frontend/lib apps/frontend/public
-mkdir -p apps/backend/app apps/backend/lib apps/backend/public
-print_success "   ✅ Đã tạo toàn bộ thư mục."
+# KHÔNG pre-create apps/frontend, apps/backend hay packages/database ở đây -
+# bootstrap/init-projects.sh (chạy sau) dùng "create-next-app" để khởi tạo 2
+# app, và create-next-app báo lỗi nếu thư mục đích đã có sẵn thư mục con bên
+# trong (dù rỗng).
+print_success "   ✅ Đã tạo toàn bộ thư mục hạ tầng."
 
 # =============================================================================
 # BƯỚC 2: File log trống
@@ -159,11 +160,11 @@ http {
   access_log /var/log/nginx/access.log main;
   sendfile on; tcp_nopush on; tcp_nodelay on; keepalive_timeout 65;
   server_tokens off; client_max_body_size 25m;
-  
+
   limit_req_zone $binary_remote_addr zone=web_limit:10m rate=50r/s;
   limit_req_zone $binary_remote_addr zone=admin_limit:10m rate=10r/s;
   limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
-  
+
   proxy_cache_path /var/cache/nginx/cdn levels=1:2 keys_zone=cdn_cache:10m max_size=5g inactive=30d;
   include /etc/nginx/conf.d/*.conf;
 }
@@ -201,13 +202,13 @@ server {
   listen 80; server_name admin.tinhchuan.vn;
   include /etc/nginx/snippets/security-headers.conf;
   add_header Cache-Control "no-store" always;
-  
+
   location = /admin/login {
     limit_req zone=login_limit burst=3 nodelay;
     proxy_pass http://backend:3000;
     proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr;
   }
-  
+
   location / {
     limit_req zone=admin_limit burst=10 nodelay;
     proxy_pass http://backend:3000;
@@ -246,8 +247,9 @@ WORKDIR /app
 
 FROM base AS dependencies
 ARG APP_NAME
-# Không cần build tool (python3/make/g++) nữa: bcryptjs là pure JS và Prisma 7
-# là rust-free client, không còn package nào cần compile native binary.
+# Không cần build tool (python3/make/g++): bcryptjs và "pg" (driver Postgres
+# của Drizzle) đều là package thuần JS, không có native binary nào cần
+# compile - tránh lỗi mismatch kiến trúc khi build trên Mac Mini ARM64.
 COPY package.json package-lock.json* ./
 COPY packages/database/package.json ./packages/database/
 COPY apps/${APP_NAME}/package.json ./apps/${APP_NAME}/
@@ -256,24 +258,10 @@ RUN npm ci
 FROM base AS builder
 ARG APP_NAME
 ENV NEXT_TELEMETRY_DISABLED=1
-# KHÔNG cần khai báo DATABASE_URL giả ở đây. "prisma generate" không kết nối
-# DB thật, chỉ đọc schema.prisma để sinh code - lý do trước đây phải bịa giá
-# trị giả là vì packages/database/prisma.config.ts dùng helper env('DATABASE_URL')
-# của Prisma, helper này ép buộc biến PHẢI tồn tại (throw PrismaConfigEnvError
-# nếu thiếu). Đã đổi sang process.env.DATABASE_URL (xem prisma.config.ts) -
-# trả về undefined thay vì throw, và từ Prisma 7.2.0 trở lên (dự án dùng 7.9.1)
-# "prisma generate" chấp nhận url undefined. Giá trị DATABASE_URL thật chỉ
-# thật sự bắt buộc khi chạy "prisma migrate deploy" lúc runtime, lấy từ
-# "environment:" trong docker-compose.yml, không liên quan bước build này.
 COPY package.json package-lock.json* ./
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY packages/ ./packages/
 COPY apps/ ./apps/
-
-WORKDIR /app/packages/database
-RUN npx prisma generate
-
-WORKDIR /app
 RUN npm run build --workspace=apps/${APP_NAME}
 
 FROM base AS runner
@@ -287,11 +275,9 @@ RUN addgroup -g 1001 -S nodejs && adduser -S app_user -u 1001 -G nodejs
 COPY --from=builder --chown=app_user:nodejs /app/apps/${APP_NAME}/.next/standalone /app
 COPY --from=builder --chown=app_user:nodejs /app/apps/${APP_NAME}/.next/static /app/apps/${APP_NAME}/.next/static
 COPY --from=builder --chown=app_user:nodejs /app/apps/${APP_NAME}/public /app/apps/${APP_NAME}/public
-# Prisma 7 sinh client vào packages/database/generated/client (đường dẫn tự
-# khai báo qua "output" trong schema.prisma), KHÔNG còn ở node_modules/.prisma
-# như Prisma 6 nữa - "next build" standalone đôi khi trace thiếu file này nên
-# copy tay để chắc chắn container runtime luôn có sẵn.
-COPY --from=builder --chown=app_user:nodejs /app/packages/database/generated /app/packages/database/generated
+# Không copy thêm gì từ packages/database: "transpilePackages" trong
+# next.config.ts đã khiến Next.js tự bundle code đó thẳng vào
+# .next/standalone lúc build, kể cả dependency runtime (drizzle-orm, pg).
 
 USER app_user
 EXPOSE 3000
@@ -310,6 +296,9 @@ print_step "🐙 [Bước 7/9] Đang tạo docker-compose.yml và script backup.
 
 cat > scripts/backup.sh << 'EOF'
 #!/bin/sh
+# Vòng lặp nền chạy trong container "postgres_backup": mỗi phút kiểm tra giờ
+# hệ thống, đúng 2h sáng (giờ VN) thì dump toàn bộ database, nén gzip và lưu
+# vào /backups (đã mount ra thư mục ./backups trên host).
 last_backup_date=""
 while true; do
     current_hour=$(date +%H)
@@ -319,9 +308,7 @@ while true; do
         if pg_dump -h postgres -U "${DB_USER}" "${DB_NAME}" | gzip > "$backup_file_path"; then
             echo "[$(date)] ✅ Đã tạo backup: $backup_file_path"
             last_backup_date="$current_date"
-            # Chỉ giữ lại backup trong 7 ngày gần nhất, tự động xoá file cũ hơn
-            # để tránh đầy ổ đĩa SSD giới hạn của Mac Mini. "-mtime +7" nghĩa là
-            # thời gian sửa đổi file (mtime) lớn hơn 7 ngày trước thời điểm hiện tại.
+            # Xoá các bản backup cũ hơn 7 ngày để tránh đầy ổ đĩa Mac Mini
             find /backups -name 'tinhchuan_*.sql.gz' -mtime +7 -delete
         else
             echo "[$(date)] ❌ Backup thất bại, sẽ thử lại ở vòng lặp sau"
@@ -332,14 +319,17 @@ done
 EOF
 chmod +x scripts/backup.sh
 
-# --- Docker Compose (ĐÃ SỬA LỖI YAML FLOW MAPPING) ---
 cat > docker-compose.yml << 'EOF'
+# Cấu hình logging dùng chung cho mọi service - giới hạn dung lượng log (tối
+# đa 3 file x 10MB/service) để không làm đầy ổ đĩa Mac Mini theo thời gian.
 x-logging-config: &logging_config
   driver: "json-file"
   options:
     max-size: "10m"
     max-file: "3"
 
+# Mạng nội bộ riêng cho toàn bộ service, dùng dải subnet cố định để Nginx
+# nhận diện đúng traffic nội bộ (xem config/nginx/snippets/real-ip.conf).
 networks:
   tinhchuan_network:
     driver: bridge
@@ -348,6 +338,9 @@ networks:
         - subnet: 172.28.0.0/16
 
 services:
+  # Cơ sở dữ liệu chính - lưu toàn bộ dữ liệu nghiệp vụ (tax_rule_version,
+  # legal_source...). Chỉ mở port ra 127.0.0.1 để Drizzle Kit CLI chạy trên
+  # HOST kết nối được, không expose ra ngoài Internet.
   postgres:
     image: postgres:17.11-alpine
     container_name: tinhchuan-postgres
@@ -377,6 +370,9 @@ services:
       retries: 5
       start_period: 30s
 
+  # Cache dùng cho khu vực quản trị (rate-limit, session token admin) - Phase
+  # 1 chưa có tài khoản người dùng nên KHÔNG dùng Redis cho session người
+  # dùng cuối.
   redis:
     image: redis:7.4-alpine
     container_name: tinhchuan-redis
@@ -397,6 +393,8 @@ services:
       timeout: 3s
       retries: 5
 
+  # Lưu trữ file (ảnh, tài liệu) qua 3 bucket: media (public qua CDN), system,
+  # private (nội bộ, không public - xem chặn "/private/" ở 30-cdn.conf).
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     container_name: tinhchuan-minio
@@ -420,6 +418,8 @@ services:
       retries: 3
       start_period: 20s
 
+  # Next.js CMS - trang quản trị nội dung (admin.tinhchuan.vn), chạy port nội
+  # bộ 3000, map ra 3001 trên host để không đụng frontend.
   backend:
     image: tinhchuan-backend:latest
     build:
@@ -447,6 +447,7 @@ services:
         condition: service_healthy
     networks: [tinhchuan_network]
 
+  # Next.js Web - trang công khai cho người dùng cuối (tinhchuan.vn).
   frontend:
     image: tinhchuan-frontend:latest
     build:
@@ -473,6 +474,8 @@ services:
         condition: service_healthy
     networks: [tinhchuan_network]
 
+  # Reverse proxy - định tuyến request tới đúng frontend/backend theo domain
+  # (tinhchuan.vn vs admin.tinhchuan.vn), áp rate-limit và header bảo mật.
   nginx:
     image: nginx:1.27-alpine
     container_name: tinhchuan-nginx
@@ -503,6 +506,8 @@ services:
       timeout: 5s
       retries: 3
 
+  # Expose hệ thống ra Internet qua Cloudflare Tunnel - không cần mở port nào
+  # trên router/firewall của Mac Mini.
   tunnel:
     image: cloudflare/cloudflared:2025.4.0
     container_name: tinhchuan-tunnel
@@ -526,6 +531,8 @@ services:
       retries: 3
       start_period: 20s
 
+  # Giao diện web xem log realtime của toàn bộ container - chỉ nên truy cập
+  # qua Tailscale (không expose ra ngoài Internet qua Nginx/Cloudflare).
   dozzle:
     image: amir20/dozzle:v8.12.6
     container_name: tinhchuan-dozzle
@@ -541,6 +548,7 @@ services:
     ports: ["127.0.0.1:9999:8080"]
     networks: [tinhchuan_network]
 
+  # Chạy nền script scripts/backup.sh - tự động backup PostgreSQL mỗi ngày.
   postgres_backup:
     image: postgres:17.11-alpine
     container_name: tinhchuan-postgres-backup
@@ -566,16 +574,16 @@ EOF
 print_success "   ✅ Đã tạo docker-compose.yml và script backup."
 
 # =============================================================================
-# BƯỚC 8: Makefile, .env, CI/CD
+# BƯỚC 8: Makefile, .env, Cloudflare Tunnel
 # =============================================================================
-print_step "⚙️ [Bước 8/9] Đang tạo Makefile, .env, CI/CD..."
+print_step "⚙️ [Bước 8/9] Đang tạo Makefile, .env, cấu hình Cloudflare Tunnel..."
 cat > Makefile << 'EOF'
-.PHONY: help up down restart logs status backup_now clean prisma_migrate prisma_studio
+.PHONY: help up down restart deploy logs status backup_now clean db_migrate db_studio
 
 help: ## 📖 Hiển thị danh sách lệnh hỗ trợ
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-up: ## 🚀 Khởi động toàn bộ hệ thống
+up: ## 🚀 Khởi động toàn bộ hệ thống (build lại nếu có thay đổi)
 	@echo "⏳ Đang khởi động hệ thống..."
 	@docker compose up -d --build
 	@echo "⏳ Đang chờ các dịch vụ ổn định (50 giây)..."
@@ -586,6 +594,11 @@ down: ## 🛑 Dừng toàn bộ containers
 	@docker compose down
 
 restart: down up ## 🔄 Khởi động lại toàn bộ hệ thống
+
+deploy: ## 🚀 Deploy thủ công: pull code mới nhất rồi build lại và khởi động
+	@echo "⏳ Đang pull code mới nhất từ Git..."
+	@git pull
+	@$(MAKE) up
 
 logs: ## 📜 Xem log realtime (vd: make logs s=backend)
 	@docker compose logs -f --tail=50 $(s)
@@ -598,11 +611,11 @@ backup_now: ## 💾 Backup PostgreSQL ngay lập tức
 	@docker compose exec postgres pg_dump -U $$(grep DB_USER .env | cut -d= -f2) $$(grep DB_NAME .env | cut -d= -f2) | gzip > backups/manual_$$(date +%Y%m%d_%H%M%S).sql.gz
 	@echo "✅ Đã tạo backup"
 
-prisma_migrate: ## 🗄️ Áp dụng Prisma migration
-	@docker compose exec backend npx prisma migrate deploy
+db_migrate: ## 🗄️ Áp dụng Drizzle migration (chạy trên HOST, không phải trong container)
+	@npm run db:migrate --workspace=packages/database
 
-prisma_studio: ## 🔎 Mở Prisma Studio
-	@docker compose exec backend npx prisma studio
+db_studio: ## 🔎 Mở Drizzle Studio (chạy trên HOST)
+	@npm run db:studio --workspace=packages/database
 
 clean: ## 🧹 Dọn dẹp image và cache Docker không dùng
 	@docker system prune -af
@@ -612,17 +625,17 @@ EOF
 cat > .env.example << 'EOF'
 TIMEZONE=Asia/Ho_Chi_Minh
 # Tên DB khớp với Checklist_Phase1.md ("Tạo database `tinhchuan`") - đổi tên
-# tại đây nếu bạn muốn dùng quy ước khác, nhưng nhớ sửa đồng bộ ở checklist.
+# tại đây nếu bạn muốn dùng quy ước khác, nhớ sửa đồng bộ ở checklist.
 DB_NAME=tinhchuan
 DB_USER=tinhchuan_app
 DB_PASSWORD=ThayBang_openssl_rand_base64_32
-# DATABASE_URL dùng cho Prisma CLI chạy TRÊN HOST (npx prisma generate/studio/
-# migrate ngoài Docker) - trỏ "localhost" qua cổng đã forward ở docker-compose
-# (127.0.0.1:5432). LƯU Ý: phải tự đồng bộ tay 3 giá trị user/password/dbname
-# bên dưới khớp với DB_USER/DB_PASSWORD/DB_NAME ở trên (dotenv không tự nội
-# suy biến). Bên trong Docker, backend/frontend dùng DATABASE_URL riêng trỏ
-# hostname "postgres" - đã cấu hình sẵn trong docker-compose.yml, không đọc
-# giá trị này.
+# DATABASE_URL dùng cho Drizzle Kit CLI chạy TRÊN HOST (npm run db:generate/
+# db:push/db:migrate/db:studio ngoài Docker) - trỏ "localhost" qua cổng đã
+# forward ở docker-compose (127.0.0.1:5432). Phải tự đồng bộ tay 3 giá trị
+# user/password/dbname bên dưới khớp với DB_USER/DB_PASSWORD/DB_NAME ở trên
+# (dotenv không tự nội suy biến). Bên trong Docker, backend/frontend dùng
+# DATABASE_URL riêng trỏ hostname "postgres" - đã cấu hình sẵn trong
+# docker-compose.yml, không đọc giá trị này.
 DATABASE_URL=postgresql://tinhchuan_app:ThayBang_openssl_rand_base64_32@localhost:5432/tinhchuan
 REDIS_PASSWORD=ThayBang_openssl_rand_base64_32
 MINIO_ROOT_USER=minio_admin
@@ -654,610 +667,7 @@ ingress:
     service: http://nginx:80
   - service: http_status:404
 EOF
-
-cat > scripts/deploy.sh << 'DEPLOY_SH_EOF'
-#!/usr/bin/env bash
-
-# =============================================================================
-# TINHCHUAN.VN - DEPLOY SCRIPT
-#
-# Luồng:
-# GitHub Actions
-#   ↓
-# Tailscale
-#   ↓
-# SSH
-#   ↓
-# Mac Mini
-#   ↓
-# deploy.sh
-#   ↓
-# OrbStack / Docker Compose
-#   ↓
-# Nginx
-# =============================================================================
-
-set -euo pipefail
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
-PROJECT_DIRECTORY="$HOME/tinhchuan"
-DEPLOY_TARGET="${1:-all}"
-START_TIMESTAMP=$(date +%s)
-
-# PATH cho macOS + Homebrew + OrbStack.
-export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.orbstack/bin:$PATH"
-
-# =============================================================================
-# Logging
-# =============================================================================
-
-COLOR_GREEN='\033[0;32m'
-COLOR_RED='\033[0;31m'
-COLOR_YELLOW='\033[1;33m'
-COLOR_RESET='\033[0m'
-
-print_info() {
-    echo -e "[DEPLOY] $1"
-}
-
-print_success() {
-    echo -e "${COLOR_GREEN}[DEPLOY] $1${COLOR_RESET}"
-}
-
-print_warning() {
-    echo -e "${COLOR_YELLOW}[DEPLOY] $1${COLOR_RESET}"
-}
-
-print_error() {
-    echo -e "${COLOR_RED}[DEPLOY] $1${COLOR_RESET}"
-}
-
-# =============================================================================
-# Error handling
-# =============================================================================
-
-CURRENT_STEP="initialization"
-
-handle_error() {
-    local exit_code=$?
-
-    echo ""
-    print_error "========================================"
-    print_error "❌ DEPLOYMENT THẤT BẠI"
-    print_error "========================================"
-
-    print_error "Step: $CURRENT_STEP"
-    print_error "Exit code: $exit_code"
-
-    echo ""
-    print_error "Docker Compose status:"
-
-    docker compose ps 2>/dev/null || true
-
-    echo ""
-
-    exit "$exit_code"
-}
-
-trap handle_error ERR
-
-# =============================================================================
-# Validate deploy target
-# =============================================================================
-
-CURRENT_STEP="validate deploy target"
-
-case "$DEPLOY_TARGET" in
-    all)
-        ;;
-    frontend)
-        ;;
-    backend)
-        ;;
-    *)
-        print_error "Deploy target không hợp lệ: $DEPLOY_TARGET"
-
-        print_error "Cách dùng:"
-        print_error "  bash scripts/deploy.sh all"
-        print_error "  bash scripts/deploy.sh frontend"
-        print_error "  bash scripts/deploy.sh backend"
-
-        exit 1
-        ;;
-esac
-
-# =============================================================================
-# Header
-# =============================================================================
-
-echo ""
-echo "============================================================================="
-echo "🚀 TINHCHUAN.VN DEPLOYMENT"
-echo "============================================================================="
-
-echo "Project:"
-echo "$PROJECT_DIRECTORY"
-
-echo "Deploy target:"
-echo "$DEPLOY_TARGET"
-
-echo "Started:"
-date "+%Y-%m-%d %H:%M:%S"
-
-echo "============================================================================="
-
-# =============================================================================
-# Change project directory
-# =============================================================================
-
-CURRENT_STEP="change project directory"
-
-cd "$PROJECT_DIRECTORY"
-
-# =============================================================================
-# Validate deployment environment
-# =============================================================================
-
-CURRENT_STEP="validate deployment environment"
-
-print_info "Kiểm tra môi trường deploy..."
-
-echo "Docker:"
-docker --version
-
-echo "Docker Compose:"
-docker compose version
-
-echo "Docker Context:"
-docker context show
-
-echo "Git:"
-git --version
-
-print_success "Environment OK."
-
-# =============================================================================
-# Validate OrbStack Docker socket
-# =============================================================================
-
-CURRENT_STEP="validate orbstack"
-
-ORBSTACK_DOCKER_SOCKET="$HOME/.orbstack/run/docker.sock"
-
-if [ ! -S "$ORBSTACK_DOCKER_SOCKET" ]; then
-    print_error "Không tìm thấy Docker socket của OrbStack:"
-    print_error "$ORBSTACK_DOCKER_SOCKET"
-    exit 1
-fi
-
-print_success "OrbStack Docker socket OK."
-
-# =============================================================================
-# Validate Git repository
-# =============================================================================
-
-CURRENT_STEP="validate git repository"
-
-echo "Git branch hiện tại:"
-git branch --show-current
-
-echo "Git commit hiện tại:"
-git rev-parse --short HEAD
-
-echo "Git remote:"
-git remote -v
-
-# =============================================================================
-# Update source code
-# =============================================================================
-
-CURRENT_STEP="update source code"
-
-print_info "Đang lấy code mới nhất từ GitHub..."
-
-git fetch origin main
-
-print_info "Reset về origin/main..."
-
-git reset --hard origin/main
-
-print_success "Source code đã được cập nhật."
-
-echo "Commit sau khi cập nhật:"
-git rev-parse --short HEAD
-
-# =============================================================================
-# Validate Docker Compose
-# =============================================================================
-
-CURRENT_STEP="validate docker compose configuration"
-
-print_info "Kiểm tra Docker Compose configuration..."
-
-docker compose config -q
-
-print_success "Docker Compose configuration hợp lệ."
-
-# =============================================================================
-# Build and deploy
-# =============================================================================
-
-CURRENT_STEP="build and deploy services"
-
-print_info "Đang build và khởi động: $DEPLOY_TARGET"
-
-case "$DEPLOY_TARGET" in
-
-    # =========================================================================
-    # Deploy toàn bộ
-    # =========================================================================
-
-    all)
-
-        print_info "Build và restart toàn bộ service..."
-
-        docker compose up -d --build
-
-        print_success "Build và deploy toàn bộ service hoàn tất."
-
-        ;;
-
-    # =========================================================================
-    # Deploy frontend
-    # =========================================================================
-
-    frontend)
-
-        print_info "Build frontend..."
-
-        docker compose build frontend
-
-        print_info "Restart frontend..."
-
-        docker compose up -d --no-deps frontend
-
-        print_success "Frontend đã được deploy."
-
-        ;;
-
-    # =========================================================================
-    # Deploy backend
-    # =========================================================================
-
-    backend)
-
-        print_info "Build backend..."
-
-        docker compose build backend
-
-        print_info "Restart backend..."
-
-        docker compose up -d --no-deps backend
-
-        print_success "Backend đã được deploy."
-
-        ;;
-
-esac
-
-# =============================================================================
-# Restart Nginx
-#
-# Frontend/backend có thể được recreate với container/IP mới.
-# Nginx cần restart để resolve lại upstream/service endpoint.
-# =============================================================================
-
-CURRENT_STEP="restart nginx"
-
-print_info "Restart Nginx để cập nhật kết nối tới frontend/backend..."
-
-if ! docker inspect tinhchuan-nginx >/dev/null 2>&1; then
-
-    print_error "Không tìm thấy container tinhchuan-nginx."
-
-    exit 1
-
-fi
-
-docker restart tinhchuan-nginx
-
-print_success "Nginx đã được restart."
-
-# Chờ Nginx khởi động lại.
-sleep 5
-
-# =============================================================================
-# Wait for services
-# =============================================================================
-
-CURRENT_STEP="wait for services"
-
-print_info "Đang chờ các service ổn định..."
-
-sleep 15
-
-# =============================================================================
-# Health check
-# =============================================================================
-
-CURRENT_STEP="health check"
-
-print_info "Đang kiểm tra trạng thái service..."
-
-FAILED_SERVICE_COUNT=0
-
-REQUIRED_CONTAINERS=(
-    tinhchuan-postgres
-    tinhchuan-redis
-    tinhchuan-minio
-    tinhchuan-backend
-    tinhchuan-frontend
-    tinhchuan-nginx
-)
-
-for container in "${REQUIRED_CONTAINERS[@]}"; do
-
-    health_status="$(
-        docker inspect \
-            --format='{{.State.Health.Status}}' \
-            "$container" \
-            2>/dev/null || echo "not_found"
-    )"
-
-    case "$health_status" in
-
-        healthy)
-
-            print_success "✅ $container: healthy"
-
-            ;;
-
-        starting)
-
-            print_warning "⏳ $container: starting"
-
-            ;;
-
-        not_found)
-
-            print_error "❌ $container: not_found"
-
-            FAILED_SERVICE_COUNT=$((FAILED_SERVICE_COUNT + 1))
-
-            ;;
-
-        *)
-
-            print_error "❌ $container: $health_status"
-
-            FAILED_SERVICE_COUNT=$((FAILED_SERVICE_COUNT + 1))
-
-            ;;
-
-    esac
-
-done
-
-# =============================================================================
-# Docker Compose status
-# =============================================================================
-
-CURRENT_STEP="docker compose status"
-
-echo ""
-print_info "Docker Compose status:"
-
-docker compose ps
-
-# =============================================================================
-# Cleanup old images
-# =============================================================================
-
-CURRENT_STEP="cleanup docker images"
-
-print_info "Đang dọn image Docker cũ..."
-
-docker image prune \
-    -f \
-    --filter "until=24h" \
-    2>/dev/null || true
-
-print_success "Docker cleanup hoàn tất."
-
-# =============================================================================
-# Calculate deployment time
-# =============================================================================
-
-END_TIMESTAMP=$(date +%s)
-ELAPSED_SECONDS=$((END_TIMESTAMP - START_TIMESTAMP))
-
-# =============================================================================
-# Deployment result
-# =============================================================================
-
-echo ""
-
-if [ "$FAILED_SERVICE_COUNT" -gt 0 ]; then
-
-    print_error "============================================================================="
-    print_error "❌ TRIỂN KHAI THẤT BẠI"
-    print_error "============================================================================="
-
-    print_error "Deploy target:"
-    print_error "$DEPLOY_TARGET"
-
-    print_error "Commit:"
-    print_error "$(git rev-parse --short HEAD)"
-
-    print_error "Service lỗi:"
-    print_error "$FAILED_SERVICE_COUNT"
-
-    print_error "Thời gian:"
-    print_error "${ELAPSED_SECONDS} giây"
-
-    print_error "============================================================================="
-
-    exit 1
-
-fi
-
-print_success "============================================================================="
-print_success "✅ TRIỂN KHAI THÀNH CÔNG"
-print_success "============================================================================="
-
-print_success "Deploy target:"
-print_success "$DEPLOY_TARGET"
-
-print_success "Commit:"
-print_success "$(git rev-parse --short HEAD)"
-
-print_success "Thời gian:"
-print_success "${ELAPSED_SECONDS} giây"
-
-print_success "============================================================================="
-DEPLOY_SH_EOF
-chmod +x scripts/deploy.sh
-
-cat > .github/workflows/deploy.yml << 'DEPLOY_YML_EOF'
-# =============================================================================
-# GITHUB ACTIONS - Tự động deploy TinhChuan.vn
-# GitHub Actions → Tailscale → SSH → Mac Mini → deploy.sh
-# =============================================================================
-
-name: "🚀 Deploy TinhChuan.vn"
-
-on:
-  push:
-    branches:
-      - main
-
-    paths-ignore:
-      - "*.md"
-      - "docs/**"
-
-  workflow_dispatch:
-    inputs:
-      deploy_part:
-        description: "Phần cần deploy"
-        required: true
-        default: "all"
-        type: choice
-        options:
-          - all
-          - frontend
-          - backend
-
-# GitHub OIDC permission.
-# Bắt buộc khi sử dụng Tailscale Workload Identity Federation.
-permissions:
-  id-token: write
-  contents: read
-
-concurrency:
-  group: deploy-production
-  cancel-in-progress: true
-
-jobs:
-
-  deploy:
-    name: "Deploy to Mac Mini"
-
-    runs-on: ubuntu-latest
-
-    timeout-minutes: 20
-
-    steps:
-
-      # =======================================================================
-      # 1. Kết nối GitHub Runner vào Tailscale
-      # =======================================================================
-
-      - name: "🔐 Kết nối Tailscale"
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
-          tags: tag:ci
-          ping: ${{ secrets.MAC_MINI_SSH_HOST }}
-
-      # =======================================================================
-      # 2. Kiểm tra Tailscale
-      # =======================================================================
-
-      - name: "🔎 Kiểm tra Tailscale"
-        run: |
-          set -e
-
-          echo "========================================"
-          echo "TAILSCALE STATUS"
-          echo "========================================"
-
-          tailscale status
-
-          echo ""
-          echo "========================================"
-          echo "TAILSCALE IP"
-          echo "========================================"
-
-          tailscale ip -4
-
-      # =======================================================================
-      # 3. SSH tới Mac Mini
-      # =======================================================================
-
-      - name: "🚀 Deploy qua SSH"
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.MAC_MINI_SSH_HOST }}
-          username: ${{ secrets.MAC_MINI_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-          port: 22
-
-          timeout: 30s
-
-          command_timeout: 15m
-
-          script_stop: true
-
-          script: |
-            set -e
-
-            PROJECT_DIRECTORY="$HOME/tinhchuan"
-            DEPLOY_PART="${{ github.event.inputs.deploy_part || 'all' }}"
-
-            echo "========================================"
-            echo "TINHCHUAN.VN DEPLOYMENT"
-            echo "========================================"
-
-            echo "Hostname:"
-            hostname
-
-            echo ""
-            echo "User:"
-            whoami
-
-            echo ""
-            echo "Deploy part:"
-            echo "$DEPLOY_PART"
-
-            echo ""
-            echo "GitHub commit:"
-            echo "${{ github.sha }}"
-
-            echo ""
-            echo "========================================"
-            echo "RUN DEPLOY SCRIPT"
-            echo "========================================"
-
-            cd "$PROJECT_DIRECTORY"
-
-            bash scripts/deploy.sh "$DEPLOY_PART"
-DEPLOY_YML_EOF
-print_success "   ✅ Đã tạo Makefile, .env, CI/CD."
+print_success "   ✅ Đã tạo Makefile, .env, cấu hình Cloudflare Tunnel."
 
 # =============================================================================
 # BƯỚC 9: Phân quyền và hoàn tất

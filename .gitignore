@@ -1,6 +1,7 @@
 .env
 node_modules/
 .next/
+bootstrap/
 data/
 logs/
 backups/
