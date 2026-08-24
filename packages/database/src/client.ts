@@ -20,6 +20,11 @@ const pool =
     max: 10,
   });
 
+// Lắng nghe sự kiện 'error' trên pool để tránh Uncaught Exception (node-postgres EventEmitter) làm crash process khi DB rớt kết nối
+pool.on('error', (err) => {
+  console.error('[pgPool] Lỗi không mong muốn trên PostgreSQL pool:', err.message);
+});
+
 if (process.env.NODE_ENV !== 'production') globalForDatabase.pgPool = pool;
 
 export const db = drizzle(pool, { schema });

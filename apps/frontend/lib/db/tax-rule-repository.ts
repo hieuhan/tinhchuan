@@ -39,39 +39,46 @@ export async function getActiveTaxRule(
   // Định dạng ngày tra cứu về 'YYYY-MM-DD'
   const queryDate = asOfDate ?? new Date().toISOString().slice(0, 10);
 
-  const rows = await db
-    .select({
-      ruleValue: taxRuleVersion.ruleValue,
-      effectiveFrom: taxRuleVersion.effectiveFrom,
-      effectiveTo: taxRuleVersion.effectiveTo,
-      documentNumber: legalSource.documentNumber,
-      documentType: legalSource.documentType,
-      title: legalSource.title,
-      issuingBody: legalSource.issuingBody,
-      issuedDate: legalSource.issuedDate,
-      effectiveDate: legalSource.effectiveDate,
-      sourceUrl: legalSource.sourceUrl,
-    })
-    .from(taxRuleVersion)
-    .innerJoin(taxRuleCategory, eq(taxRuleVersion.categoryId, taxRuleCategory.id))
-    .innerJoin(legalSource, eq(taxRuleVersion.legalSourceId, legalSource.id))
-    .where(
-      and(
-        // CHỈ đọc dữ liệu đã được con người duyệt (AGENTS.md mục 5)
-        eq(taxRuleVersion.status, 'approved'),
-        // Khớp danh mục Tool 1
-        eq(taxRuleCategory.code, CATEGORY_CODE),
-        // Quy tắc đã có hiệu lực vào ngày tra cứu
-        lte(taxRuleVersion.effectiveFrom, queryDate),
-        // Quy tắc chưa hết hiệu lực (NULL = vô thời hạn)
-        or(
-          isNull(taxRuleVersion.effectiveTo),
-          gte(taxRuleVersion.effectiveTo, queryDate)
+  let rows;
+  try {
+    rows = await db
+      .select({
+        ruleValue: taxRuleVersion.ruleValue,
+        effectiveFrom: taxRuleVersion.effectiveFrom,
+        effectiveTo: taxRuleVersion.effectiveTo,
+        documentNumber: legalSource.documentNumber,
+        documentType: legalSource.documentType,
+        title: legalSource.title,
+        issuingBody: legalSource.issuingBody,
+        issuedDate: legalSource.issuedDate,
+        effectiveDate: legalSource.effectiveDate,
+        sourceUrl: legalSource.sourceUrl,
+      })
+      .from(taxRuleVersion)
+      .innerJoin(taxRuleCategory, eq(taxRuleVersion.categoryId, taxRuleCategory.id))
+      .innerJoin(legalSource, eq(taxRuleVersion.legalSourceId, legalSource.id))
+      .where(
+        and(
+          // CHỈ đọc dữ liệu đã được con người duyệt (AGENTS.md mục 5)
+          eq(taxRuleVersion.status, 'approved'),
+          // Khớp danh mục Tool 1
+          eq(taxRuleCategory.code, CATEGORY_CODE),
+          // Quy tắc đã có hiệu lực vào ngày tra cứu
+          lte(taxRuleVersion.effectiveFrom, queryDate),
+          // Quy tắc chưa hết hiệu lực (NULL = vô thời hạn)
+          or(
+            isNull(taxRuleVersion.effectiveTo),
+            gte(taxRuleVersion.effectiveTo, queryDate)
+          )
         )
       )
-    )
-    .orderBy(taxRuleVersion.effectiveFrom)
-    .limit(1);
+      .orderBy(taxRuleVersion.effectiveFrom)
+      .limit(1);
+  } catch (dbErr) {
+    // Chuẩn hóa lỗi: bọc lại DrizzleQueryError/AggregateError để tránh pg-pool AggregateError (có errors=null) làm crash V8/Turbopack error inspector khi log
+    const errorMessage = dbErr instanceof Error ? dbErr.message : String(dbErr);
+    throw new Error(`DB connection/query error: ${errorMessage}`);
+  }
 
   if (rows.length === 0) return null;
 
