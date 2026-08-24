@@ -194,6 +194,21 @@ git remote -v
 
 CURRENT_STEP="update source code"
 
+# Kiểm tra an toàn: Chặn deploy nếu có thay đổi chưa commit trong working directory,
+# tránh việc git reset --hard âm thầm xóa mất code dở dang.
+if [[ -n "$(git status --porcelain)" ]]; then
+    print_error "============================================================================="
+    print_error "❌ PHÁT HIỆN THAY ĐỔI CHƯA COMMIT NẰM TRONG WORKING DIRECTORY"
+    print_error "============================================================================="
+    print_error "Các file đang có thay đổi chưa commit:"
+    git status --short
+    echo ""
+    print_error "HƯỚNG DẪN: Có thay đổi chưa commit sẽ bị XÓA SẠCH bởi git reset --hard."
+    print_error "Hãy commit hoặc stash các thay đổi trước khi chạy deploy script."
+    print_error "============================================================================="
+    exit 1
+fi
+
 print_info "Đang lấy code mới nhất từ GitHub..."
 
 git fetch origin main
