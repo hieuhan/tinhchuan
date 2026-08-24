@@ -22,12 +22,12 @@ export const MOCK_ACTIVE_TAX_RULE: TaxRuleWithSource = {
     documentNumber: '141/2026/NĐ-CP',
     documentType: 'Nghị định',
     title:
-      'Nghị định 141/2026/NĐ-CP quy định chi tiết ngưỡng doanh thu chịu thuế và biểu thuế đối với hộ, cá nhân kinh doanh',
+      'Nghị định số 141/2026/NĐ-CP sửa đổi, bổ sung một số điều của Nghị định số 68/2026/NĐ-CP quy định về chính sách thuế đối với hộ kinh doanh, cá nhân kinh doanh',
     issuingBody: 'Chính phủ',
     issuedDate: '2026-04-29',
     effectiveDate: '2026-01-01',
     sourceUrl:
-      'https://thuvienphapluat.vn/van-ban/Thuethiet-chu-the/Nghi-dinh-141-2026-ND-CP-placeholder',
+      'https://vanban.chinhphu.vn/?pageid=27160&docid=217960',
   },
   effectiveFrom: '2026-01-01',
   effectiveTo: null,

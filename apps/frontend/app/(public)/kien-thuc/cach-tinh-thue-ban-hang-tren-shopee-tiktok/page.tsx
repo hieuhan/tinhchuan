@@ -289,24 +289,24 @@ export default function KnowledgeArticlePage() {
               <div className={styles.legalContent}>
                 <ul className={styles.legalList}>
                   <li>
-                    <Link href="/van-ban/nghi-dinh-117-2025-nd-cp" className={styles.legalDocLink}>
-                      Nghị định 117/2025/NĐ-CP ngày 09/06/2025
-                    </Link>
+                    <a
+                      href="https://vanban.chinhphu.vn/?pageid=27160&docid=213883"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Nghị định 117/2025/NĐ-CP ngày 09/06/2025 quy định quản lý thuế đối với hoạt động kinh doanh trên nền tảng thương mại điện tử
+                    </a>
                   </li>
                   <li>
-                    <Link href="/van-ban/thong-tu-40-2021-tt-btc" className={styles.legalDocLink}>
-                      Thông tư 40/2021/TT-BTC ngày 01/06/2021
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/van-ban/cong-van-4100-tct-kk" className={styles.legalDocLink}>
-                      Công văn 4100/TCT-KK ngày 16/10/2023
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/van-ban/cong-van-1230-tct-dnl" className={styles.legalDocLink}>
-                      Công văn 1230/TCT-DNL ngày 16/03/2025
-                    </Link>
+                    <a
+                      href="https://congbao.chinhphu.vn/van-ban/thong-tu-so-40-2021-tt-btc-33850.htm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Thông tư 40/2021/TT-BTC ngày 01/06/2021 hướng dẫn thuế GTGT, TNCN và quản lý thuế đối với hộ kinh doanh, cá nhân kinh doanh
+                    </a>
                   </li>
                 </ul>
               </div>

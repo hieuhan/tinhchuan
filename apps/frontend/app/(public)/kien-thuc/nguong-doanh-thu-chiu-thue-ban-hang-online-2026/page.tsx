@@ -211,19 +211,34 @@ export default function RevenueThresholdArticlePage() {
               <div className={styles.legalContent}>
                 <ul className={styles.legalList}>
                   <li>
-                    <Link href="/van-ban/nghi-quyet-198-2025-qh15" className={styles.legalDocLink}>
-                      Nghị quyết 198/2025/QH15
-                    </Link>
+                    <a
+                      href="https://xaydungchinhsach.chinhphu.vn/nghi-quyet-198-2025-qh15-ve-mot-so-co-che-chinh-sach-dac-biet-phat-trien-kinh-te-tu-nhan-119250517191622422.htm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Nghị quyết 198/2025/QH15 về một số cơ chế, chính sách đặc biệt phát triển kinh tế tư nhân
+                    </a>
                   </li>
                   <li>
-                    <Link href="/van-ban/nghi-dinh-68-2026-nd-cp" className={styles.legalDocLink}>
-                      Nghị định 68/2026/NĐ-CP
-                    </Link>
+                    <a
+                      href="https://vanban.chinhphu.vn/?pageid=27160&docid=217111"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Nghị định 68/2026/NĐ-CP quy định chính sách thuế và quản lý thuế đối với hộ kinh doanh, cá nhân kinh doanh
+                    </a>
                   </li>
                   <li>
-                    <Link href="/van-ban/nghi-dinh-141-2026-nd-cp" className={styles.legalDocLink}>
-                      Nghị định 141/2026/NĐ-CP
-                    </Link>
+                    <a
+                      href="https://vanban.chinhphu.vn/?pageid=27160&docid=217960"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Nghị định 141/2026/NĐ-CP về sửa đổi, bổ sung chính sách thuế hộ kinh doanh, cá nhân kinh doanh
+                    </a>
                   </li>
                 </ul>
               </div>
