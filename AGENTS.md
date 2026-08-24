@@ -78,7 +78,7 @@ bash scripts/deploy.sh all               # deploy thủ công ngay tại Mac Min
 - Mỗi trang Tool bắt buộc đủ: Form → Kết quả → Cách tính → Căn cứ pháp lý
   → FAQ → Tool liên quan.
 - Chi tiết 7 nguyên tắc UI cho nội dung pháp lý/thuế: xem
-  `apps/frontend/app/CONTEXT.md` (không nhắc lại ở đây - chỉ áp dụng
+  `apps/frontend/CONTEXT.md` (không nhắc lại ở đây - chỉ áp dụng
   trong thư mục đó).
 
 ## 7. Việc CHƯA làm ở giai đoạn hiện tại (Phase 1)
