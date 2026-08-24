@@ -51,7 +51,7 @@ export default function KnowledgePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <main className={styles.container}>
+      <div className={styles.container}>
         <div className={styles.pageHeader}>
           <Breadcrumb items={breadcrumbItems} />
           <h1 className={styles.title}>Kiến thức Thuế cá nhân & Bán hàng online</h1>
@@ -73,7 +73,7 @@ export default function KnowledgePage() {
             />
           ))}
         </div>
-      </main>
+      </div>
     </>
   );
 }
