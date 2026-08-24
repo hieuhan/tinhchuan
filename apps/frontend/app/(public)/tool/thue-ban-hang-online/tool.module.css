@@ -1,0 +1,857 @@
+.container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 0 var(--container-padding);
+  }
+}
+
+/* ===== Page Header ===== */
+.pageHeader {
+  padding: var(--space-lg) 0 var(--space-xl);
+}
+
+.pageHeaderTop {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  flex-direction: column;
+  margin-bottom: var(--space-sm);
+}
+
+@media (min-width: 768px) {
+  .pageHeaderTop {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-md);
+  }
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+@media (min-width: 768px) {
+  .pageTitle {
+    font-size: 1.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pageTitle {
+    font-size: 2rem;
+  }
+}
+
+.badgeEffective {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pageSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+/* ===== Calculator Section ===== */
+.calculatorSection {
+  padding: 0 0 var(--space-2xl);
+}
+
+.calculatorGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .calculatorGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Card chung */
+.calculatorFormCard,
+.resultCard,
+.legalCard,
+.infoCard {
+  background-color: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
+}
+
+@media (min-width: 768px) {
+  .calculatorFormCard,
+  .resultCard,
+  .legalCard,
+  .infoCard {
+    padding: var(--space-xl);
+  }
+}
+
+.cardTitle {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: var(--space-lg);
+}
+
+/* Form */
+.formGroup {
+  margin-bottom: var(--space-lg);
+}
+
+.formLabel {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-bottom: var(--space-sm);
+}
+
+.formInput,
+.formSelect {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 15%, transparent);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), background-color var(--transition-normal);
+  outline: none;
+}
+
+.formInput:focus,
+.formSelect:focus {
+  border-color: var(--color-primary);
+}
+
+.selectWrapper {
+  position: relative;
+}
+
+.formSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 2.5rem;
+}
+
+.selectArrow {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-ink-muted);
+  font-size: 0.875rem;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.btnCalculate {
+  display: block;
+  width: 100%;
+  padding: 0.875rem;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: filter var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btnCalculate:hover {
+  filter: brightness(0.92);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.formNote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-top: var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.formNoteIcon {
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+}
+
+/* Result Card */
+.taxStatusBadgeWarning {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+}
+
+.taxStatusBadgeSuccess {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+}
+
+.resultLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-xs);
+  font-weight: 500;
+}
+
+.resultAmount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-ink);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-lg);
+}
+
+@media (min-width: 480px) {
+  .resultAmount {
+    font-size: 2rem;
+  }
+}
+
+.resultCurrency {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.resultDetail {
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  margin-bottom: var(--space-md);
+}
+
+.detailTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: var(--space-md);
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: 0.5rem 0;
+}
+
+.detailName {
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+.detailValue {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.resultTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-sm);
+}
+
+.totalLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.totalValue {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.resultDisclaimer {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+  margin-top: var(--space-md);
+  margin-bottom: 0;
+}
+
+/* ===== Result idle state ===== */
+.resultIdle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  border: 1px dashed color-mix(in srgb, var(--color-ink) 18%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+
+.resultIdleText {
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ===== Error: doanh thu > 3 tỷ (thông báo thân thiện) ===== */
+.errorOverLimitBox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background-color: var(--color-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--color-warning-text) 25%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.errorOverLimitIcon {
+  flex-shrink: 0;
+  color: var(--color-warning-text);
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  margin-top: 0.1rem;
+}
+
+.errorOverLimitTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-warning-text);
+  margin-bottom: var(--space-xs);
+}
+
+.errorOverLimitDesc {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning-text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ===== Error: lỗi hệ thống ===== */
+.errorSystemBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background-color: var(--color-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--color-warning-text) 25%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.errorSystemIcon {
+  flex-shrink: 0;
+  color: var(--color-warning-text);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.errorSystemText {
+  font-size: var(--font-size-sm);
+  color: var(--color-warning-text);
+  margin: 0;
+}
+
+/* ===== Legal source inline (trong card kết quả, ngay dưới kết quả) ===== */
+/* CONTEXT.md nguyên tắc 1: trích dẫn legalSource đặt NGAY DƯỚI kết quả tính toán */
+.resultLegalSource {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.resultLegalSourceLabel {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.resultLegalSourceLink {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: text-decoration var(--transition-fast);
+}
+
+.resultLegalSourceLink:hover {
+  text-decoration: underline;
+}
+
+.resultLegalSourceDate {
+  color: var(--color-ink-muted);
+}
+
+
+
+/* ===== Legal Section ===== */
+.legalSection {
+  padding: 0 0 var(--space-xl);
+}
+
+.legalCard {
+  background-color: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .legalCard {
+    padding: var(--space-xl);
+  }
+}
+
+.legalHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.legalIcon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.legalTitle {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.legalContent {
+  flex: 1;
+}
+
+.legalList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.legalList li {
+  margin-bottom: 0.375rem;
+}
+
+.legalDocLink {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+  text-decoration: none;
+  padding-left: 1.25rem;
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.legalDocLink::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.legalDocLink:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* ===== History Section ===== */
+.historySection {
+  padding: 0 0 var(--space-xl);
+}
+
+.accordionCard {
+  background-color: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  padding: 0;
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
+}
+
+.accordionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-ink);
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+@media (min-width: 768px) {
+  .accordionHeader {
+    padding: var(--space-lg) var(--space-xl);
+  }
+}
+
+.accordionHeader:hover {
+  background-color: var(--color-paper);
+}
+
+.accordionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.accordionTitleIcon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.accordionIcon {
+  color: var(--color-ink-muted);
+  font-size: 1.25rem;
+  transition: transform var(--transition-fast);
+  display: flex;
+  align-items: center;
+}
+
+.accordionIconOpen {
+  transform: rotate(180deg);
+}
+
+.accordionBody {
+  display: block;
+  padding: 0;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.historyTable th,
+.historyTable td {
+  padding: 0.75rem var(--space-md);
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+@media (min-width: 768px) {
+  .historyTable th,
+  .historyTable td {
+    padding: 0.875rem var(--space-xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .historyTable th,
+  .historyTable td {
+    padding: 0.5rem 0.75rem;
+    font-size: var(--font-size-xs);
+  }
+}
+
+.historyTable th {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  background-color: var(--color-paper);
+}
+
+.historyTable td {
+  color: var(--color-ink-muted);
+}
+
+.historyTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Hàng hiện tại (hiệu lực) trong bảng lịch sử */
+.historyTableRowCurrent td {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+/* ===== Info Section (Cách tính + FAQ) ===== */
+.infoSection {
+  padding: 0 0 var(--space-xl);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-lg);
+}
+
+@media (min-width: 1024px) {
+  .infoGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.infoCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.infoHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.infoIcon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.infoTitle {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.infoText {
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-md);
+  line-height: 1.6;
+}
+
+.infoList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-md);
+}
+
+.infoList li {
+  position: relative;
+  padding-left: 1.25rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.infoList li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* Ghi chú nhỏ trong danh sách cách tính */
+.infoListNote {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+  font-weight: 400;
+}
+
+/* FAQ Mini */
+.faqMiniList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.faqMiniItem {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+.faqMiniItem:last-child {
+  border-bottom: none;
+}
+
+.faqMiniQuestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.875rem 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.faqMiniQuestion:hover {
+  color: var(--color-primary);
+}
+
+.faqMiniIcon {
+  flex-shrink: 0;
+  color: var(--color-ink-muted);
+  font-size: 0.875rem;
+  transition: transform var(--transition-fast);
+  display: flex;
+  align-items: center;
+}
+
+.faqMiniIconOpen {
+  transform: rotate(180deg);
+}
+
+.faqMiniAnswer {
+  padding: 0 0 0.875rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+}
+
+/* ===== Related Section ===== */
+.relatedSection {
+  padding: 0 0 var(--space-xl);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: var(--space-lg);
+  letter-spacing: -0.01em;
+}
+
+.relatedGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .relatedGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ===== Disclaimer Box ===== */
+.disclaimerSection {
+  padding: 0 0 var(--space-2xl);
+}
+
+.disclaimerBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: var(--space-md) var(--space-lg);
+  background-color: var(--color-success-bg);
+  border: 1px solid color-mix(in srgb, var(--color-success-text) 25%, transparent);
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .disclaimerBox {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+.disclaimerIcon {
+  flex-shrink: 0;
+  color: var(--color-success-text);
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+}
+
+.disclaimerText {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-success-text);
+  margin: 0;
+}
