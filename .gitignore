@@ -1,4 +1,4 @@
-.env
+.env*
 node_modules/
 .next/
 bootstrap/
@@ -6,4 +6,7 @@ data/
 logs/
 backups/
 design-source/
+.temp/
+*.tsbuildinfo
 .DS_Store
+.vs/
