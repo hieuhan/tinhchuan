@@ -4,6 +4,8 @@
 > buộc khi code (Instruction) nằm ở `AGENTS.md` và các `CONTEXT.md` colocated
 > - KHÔNG lặp lại ở đây. Nếu thấy 1 quy tắc vừa có ở đây vừa có ở AGENTS.md,
 > đó là lỗi trùng lặp cần báo lại để xóa bớt.
+>
+> Cập nhật khi nào: xem `docs/CONTEXT.md`.
 
 ---
 
@@ -111,12 +113,18 @@ vào **độ sâu nội dung xoay quanh đúng 1 chủ đề đang "hot"** (lu�
 tháng 4/2026, search demand cao, đối thủ chưa kịp cập nhật). Build tối
 thiểu 4 trang liên kết chặt với nhau:
 
-| URL | Vai trò | Từ khóa mục tiêu |
-|---|---|---|
-| `/tool/thue-ban-hang-online` | Trang chính (Tool) | "tính thuế bán hàng online" |
-| `/kien-thuc/nguong-doanh-thu-chiu-thue-ban-hang-online-2026` | Giải thích ngưỡng 1 tỷ, link về Tool | "ngưỡng thuế hộ kinh doanh 1 tỷ" |
-| `/kien-thuc/cach-tinh-thue-ban-hang-tren-shopee-tiktok` | Case cụ thể theo sàn TMĐT, link về Tool | "thuế bán hàng shopee tiktok shop" |
-| `/kien-thuc/nghi-dinh-141-2026-thay-doi-gi` | Tin tức cập nhật quy định | "nghị định 141/2026" |
+| URL | Vai trò | Từ khóa mục tiêu | `design-source/<slug>/` |
+|---|---|---|---|
+| `/tool/thue-ban-hang-online` | Trang chính (Tool) | "tính thuế bán hàng online" | `thue-ban-hang-online/` |
+| `/kien-thuc/nguong-doanh-thu-chiu-thue-ban-hang-online-2026` | Giải thích ngưỡng 1 tỷ, link về Tool | "ngưỡng thuế hộ kinh doanh 1 tỷ" | `nguong-doanh-thu-chiu-thue-ban-hang-online-2026/` |
+| `/kien-thuc/cach-tinh-thue-ban-hang-tren-shopee-tiktok` | Case cụ thể theo sàn TMĐT, link về Tool | "thuế bán hàng shopee tiktok shop" | `cach-tinh-thue-ban-hang-tren-shopee-tiktok/` |
+| `/kien-thuc/nghi-dinh-141-2026-thay-doi-gi` | Tin tức cập nhật quy định | "nghị định 141/2026" | `nghi-dinh-141-2026-thay-doi-gi/` |
+
+> Slug `design-source/` PHẢI khớp chính xác đoạn cuối route (không thêm
+> tiền tố `tool-`/`kien-thuc-`) - xem quy tắc đầy đủ ở
+> `apps/frontend/CONTEXT.md` mục "Quy trình convert HTML/CSS thô".
+> Trang chủ (`/`) là ngoại lệ - dùng `design-source/home/` vì route gốc
+> không có đoạn slug để khớp.
 
 ### 3.3 Chiến lược SEO Phase 1
 

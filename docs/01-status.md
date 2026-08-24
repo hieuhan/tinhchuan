@@ -3,47 +3,36 @@
 > File này GHI ĐÈ TOÀN BỘ mỗi phiên làm việc - KHÔNG cộng dồn lịch sử.
 > Lịch sử quyết định kiến trúc xem `docs/decisions/00-index.md`.
 
-**Cập nhật lần cuối**: 2026-08-22
+**Cập nhật lần cuối**: 2026-08-24
 
 ## Đang ở Phase nào
 
-Phase 1 - Tuần 1 (Nền tảng), xem `docs/checklist-phase-1.md`.
+Phase 1 - Tuần 2 đang thực hiện. Formula Engine + Repository + Server Action đã xong. Tiếp theo: nối UI Tool 1.
 
 ## Vừa hoàn thành
 
-- Chốt kiến trúc: monorepo 2 app + `packages/database` dùng chung, ORM
-  Drizzle, `apps/frontend` CSS Modules / `apps/backend` Tailwind (ADR
-  #001-#003).
-- Chốt môi trường dev: code và deploy trực tiếp trên Mac Mini, KHÔNG
-  tách dev/production (ADR #004).
-- Chốt CI/CD: bỏ job deploy trong GitHub Actions, `git push` chỉ để
-  backup, deploy chạy tay `bash scripts/deploy.sh all` (ADR #005).
-- Chốt thiết kế 6 bảng lõi: `users`, `legal_source`, `tax_rule_category`,
-  `tax_rule_version`, `source_conflict`, `content_page` +
-  `content_page_tax_rule` (bảng nối). `users` chưa có `role` (ADR #006).
-  `content_page.content` là markdown text, không phải block JSON (ADR
-  #007). Ý nghĩa chi tiết xem `packages/database/CONTEXT.md`.
-- Dựng thật `apps/frontend`, `apps/backend` qua `create-next-app` +
-  patch (đã build-test thành công), `packages/database` (khung Drizzle),
-  `packages/content-pipeline` (khung tối thiểu).
-- Cập nhật toàn bộ bộ tài liệu AI Agent: `AGENTS.md`, `CLAUDE.md`,
-  `GEMINI.md`, `docs/00-glossary.md`, `docs/01-status.md` (file này),
-  `docs/decisions/00-index.md`, `packages/database/CONTEXT.md`.
-- Định nghĩa schema Drizzle 6 bảng + seed script (`packages/database/src/schema/index.ts` & `src/seed.ts`), đã generate migration, push schema xuống DB và seed dữ liệu ban đầu thành công.
+- Chốt kiến trúc monorepo 2 app + `packages/database` dùng chung, Drizzle ORM, `apps/frontend` CSS Modules / `apps/backend` Tailwind (ADR #001-#003).
+- Định nghĩa schema Drizzle 6 bảng lõi + seed script (`packages/database/src/schema/index.ts` & `src/seed.ts`), đã generate migration, push schema xuống DB và seed dữ liệu ban đầu thành công.
+- `apps/frontend/CONTEXT.md` và `apps/backend/CONTEXT.md` đã dời từ `app/CONTEXT.md` ra `CONTEXT.md` (ngang hàng `app/`), mọi tham chiếu đã cập nhật, không còn file/dòng nào trỏ đường dẫn cũ.
+- Cụm nội dung Phase 1 (`docs/product-spec.md` mục 3.2, 4 trang): ĐÃ HOÀN TẤT 4/4 TRANG — Trang chủ (`/`), Tool 1 (`/tool/thue-ban-hang-online`), Kiến thức "Cách tính thuế bán hàng Shopee, TikTok Shop" (`/kien-thuc/cach-tinh-thue-ban-hang-tren-shopee-tiktok`), Kiến thức "Nghị định 141/2026 thay đổi gì" (`/kien-thuc/nghi-dinh-141-2026-thay-doi-gi`), Kiến thức "Ngưỡng doanh thu chịu thuế 2026" (`/kien-thuc/nguong-doanh-thu-chiu-thue-ban-hang-online-2026`).
+- `apps/frontend/manifest.json` hiện có 6 component tái dùng (`Button`, `Breadcrumb`, `FaqAccordion`, `FeatureCard`, `StepCard`, `ArticleCard`) và 25 icon SVG tự host trong `components/icons/` (bổ sung `LockIcon`, `QuestionCircleIcon`, `CartIcon`, `ScaleIcon`, `TrendingUpIcon`).
+- Convert hoàn tất trang Tool 1 Công cụ tính thuế bán hàng online (`apps/frontend/app/(public)/tool/thue-ban-hang-online/page.tsx`), có accordion lịch sử ngưỡng thuế, mini FAQ accordion, đánh dấu đầy đủ `// TODO:` nối Formula Engine.
+- Bảng màu `globals.css` đã xác nhận đúng chuẩn đã duyệt (không phải bảng do AI cắt HTML tự chọn).
+- **[Tuần 2] Formula Engine + Repository + Server Action — ĐÃ XONG**:
+  - `apps/frontend/lib/formula-engine/tinh-thue-ban-hang-online.ts`: Hàm thuần `tinhThueOnline()`, công thức đúng theo product-spec.md mục 3.1 (GTGT không trừ ngưỡng, TNCN có trừ ngưỡng).
+  - `apps/frontend/lib/db/tax-rule-repository.ts`: Hàm `getActiveTaxRule()`, chỉ đọc `status='approved'`, JOIN legalSource trả kèm trích dẫn pháp lý.
+  - `apps/frontend/app/(public)/tool/thue-ban-hang-online/action.ts`: Server Action `calculateTax()`, gọi repository → formula engine, throw Error rõ ràng nếu không tìm thấy rule.
+  - Unit test (`tinh-thue-ban-hang-online.test.ts`): 15/15 test pass — đối chiếu đúng ví dụ kiểm chứng (1.8 tỷ → GTGT 18 triệu, TNCN 4 triệu).
+- Bổ sung quy ước chỉ thị AI Agent riêng từng app qua `apps/frontend/AGENTS.md` và `apps/frontend/CLAUDE.md` (dẫn chiếu AGENTS.md gốc và quy định riêng cho frontend).
+- Kiểm tra build `apps/frontend` pass thành công (0 lỗi, 9 routes).
 
 ## Đang làm / Tiếp theo
 
-- Xóa các GitHub Secrets không còn dùng (`SSH_PRIVATE_KEY`,
-  `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `MAC_MINI_SSH_HOST`,
-  `MAC_MINI_SSH_USER`) theo ADR #005.
-- Xóa job `deploy` khỏi `.github/workflows/deploy.yml` (giữ `ci.yml` nếu
-  muốn) theo ADR #005.
-- Bắt đầu Checklist Phase 1 - Tuần 2: Formula Engine + UI Tool 1 (đã
-  có schema DB thật).
+1. Nối Server Action `calculateTax()` vào Tool 1 UI (`/tool/thue-ban-hang-online/page.tsx`) — thay thế logic tạm thời đang hardcode trong `useState`.
+2. Nối Hero Status Card trang chủ với dữ liệu ngưỡng thuế từ DB.
 
 ## Việc CHƯA làm (không tự ý bắt đầu)
 
-- Crawler + AI Agent thật trong `packages/content-pipeline` (Phase 2).
-- Admin review dashboard thật (Phase 2).
+- Crawler + AI Agent thật, Admin review dashboard (Phase 2).
 - Tool 2-5 (Phase 3).
-- Phân quyền (`role`), tài khoản người dùng cuối, Premium (Phase 5).
+- Phân quyền, tài khoản người dùng cuối, Premium (Phase 5).
