@@ -7,6 +7,7 @@ import {
   ChevronDownIcon,
   CheckCircleIcon,
 } from '@/components/icons';
+import { formatVnd, formatDate } from '@/lib/format';
 import { calculateTax, type TaxActionSuccess } from './action';
 import styles from './tool.module.css';
 
@@ -19,18 +20,6 @@ type CalculationState =
   | { status: 'error_no_rule' }       // Không có rule được duyệt
   | { status: 'error_db_unavailable' } // DB không kết nối được - hệ thống bảo trì
   | { status: 'error_system' };       // Lỗi bất ngờ khác
-
-/** Định dạng số VND sang chuỗi có dấu chấm phân cách theo locale Việt Nam */
-function formatVnd(amount: number): string {
-  return amount.toLocaleString('vi-VN');
-}
-
-/** Định dạng ngày từ 'YYYY-MM-DD' → 'DD/MM/YYYY' */
-function formatDate(isoDate: string): string {
-  const parts = isoDate.split('-');
-  if (parts.length !== 3) return isoDate;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
 
 export default function TaxCalculator() {
   const [revenueInput, setRevenueInput] = useState('');

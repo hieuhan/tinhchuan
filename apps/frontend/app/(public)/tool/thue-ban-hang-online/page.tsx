@@ -11,23 +11,20 @@ import {
 import { Breadcrumb } from '@/components/ui/Breadcrumb/Breadcrumb';
 import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion/FaqAccordion';
+import { formatDate } from '@/lib/format';
 import { resolveActiveTaxRule } from './action';
 import TaxCalculator from './TaxCalculator';
 import TaxHistoryAccordion from './TaxHistoryAccordion';
 import styles from './tool.module.css';
+
+// Render động ở mọi request: tránh Next.js prerender lúc build (tránh lỗi khi DB chưa sẵn sàng lúc Docker build image). Mỗi request tự query DB mới nhất.
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Công cụ tính thuế bán hàng online 2026 | TinhChuan.vn',
   description:
     'Tính thuế GTGT và TNCN cho hộ kinh doanh, cá nhân bán hàng online (Shopee, TikTok Shop, Facebook...) theo Nghị định 141/2026/NĐ-CP. Kết quả có căn cứ pháp lý rõ ràng.',
 };
-
-/** Định dạng ngày từ 'YYYY-MM-DD' → 'DD/MM/YYYY' */
-function formatDate(isoDate: string): string {
-  const parts = isoDate.split('-');
-  if (parts.length !== 3) return isoDate;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
 
 const miniFaqItems = [
   {
@@ -60,8 +57,10 @@ export default async function OnlineSalesTaxCalculatorPage() {
     if (activeRule?.legalSourceInfo?.effectiveDate) {
       effectiveDateText = formatDate(activeRule.legalSourceInfo.effectiveDate);
     }
-  } catch {
-    // Nếu DB down và không có mock, giữ effectiveDateText = null để ẩn badge
+  } catch (err) {
+    // Vì render động ở mỗi request, khi DB lỗi thì log server và ẩn badge ngày để tránh hiển thị thông tin sai căn cứ
+    console.error('[OnlineSalesTaxCalculatorPage] Lỗi khi truy vấn active tax rule:', err);
+    effectiveDateText = null;
   }
 
   return (

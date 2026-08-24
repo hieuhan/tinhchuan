@@ -17,7 +17,12 @@ import { FeatureCard } from '@/components/ui/FeatureCard/FeatureCard';
 import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion/FaqAccordion';
 import type { FaqItemData } from '@/components/ui/FaqAccordion/FaqAccordion';
+import { formatDate, formatVnd } from '@/lib/format';
+import { resolveActiveTaxRule } from './tool/thue-ban-hang-online/action';
 import styles from './home.module.css';
+
+// Render động ở mọi request: tránh Next.js prerender lúc build (tránh lỗi khi DB chưa sẵn sàng lúc Docker build image). Mỗi request tự query DB mới nhất.
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Tính thuế bán hàng online - TinhChuan.vn',
@@ -69,7 +74,31 @@ const faqItems: FaqItemData[] = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Lấy dữ liệu quy tắc thuế động từ DB/mock ở mỗi request
+  let activeRuleInfo: {
+    thresholdText: string;
+    effectiveDateText: string;
+    legalTitleText: string;
+  } | null = null;
+
+  try {
+    const rule = await resolveActiveTaxRule();
+    if (rule) {
+      activeRuleInfo = {
+        thresholdText: formatVnd(rule.ruleValue.threshold),
+        effectiveDateText: formatDate(rule.legalSourceInfo.effectiveDate),
+        legalTitleText: rule.legalSourceInfo.documentNumber
+          ? `Áp dụng theo ${rule.legalSourceInfo.documentType} ${rule.legalSourceInfo.documentNumber}`
+          : rule.legalSourceInfo.title,
+      };
+    }
+  } catch (err) {
+    // Vì render động ở mỗi request, khi DB lỗi thì log server và ẩn Status Card để tránh hiển thị thông tin sai căn cứ
+    console.error('[HomePage] Lỗi khi truy vấn active tax rule:', err);
+    activeRuleInfo = null;
+  }
+
   return (
     <>
       {/* Hero Section */}
@@ -84,27 +113,28 @@ export default function HomePage() {
                 Công cụ giúp bạn xác định nhanh nghĩa vụ thuế theo quy định mới nhất, dựa trên nguồn luật chính thống.
               </p>
               <div className={styles.heroActions}>
-                <Button href="/tinh-thue" variant="primary" icon={<ArrowRightIcon />}>
+                <Button href="/tool/thue-ban-hang-online" variant="primary" icon={<ArrowRightIcon />}>
                   Tính thuế ngay
                 </Button>
-                <Button href="/kien-thuc" variant="link" icon={<ArrowRightIcon />}>
+                <Button href="/kien-thuc/nguong-doanh-thu-chiu-thue-ban-hang-online-2026" variant="link" icon={<ArrowRightIcon />}>
                   Xem kiến thức
                 </Button>
               </div>
             </div>
             <div className={styles.heroCard}>
-              <div className={styles.statusCard}>
-                {/* TODO: nối Formula Engine, không giữ số tĩnh */}
-                <div className={styles.statusBadge}>
-                  <span className={styles.statusDot}></span>
-                  Hiệu lực từ 01/01/2026
+              {activeRuleInfo && (
+                <div className={styles.statusCard}>
+                  <div className={styles.statusBadge}>
+                    <span className={styles.statusDot}></span>
+                    Hiệu lực từ {activeRuleInfo.effectiveDateText}
+                  </div>
+                  <p className={styles.statusLabel}>Ngưỡng doanh thu chịu thuế</p>
+                  <p className={styles.statusAmount}>
+                    {activeRuleInfo.thresholdText} <span className={styles.statusCurrency}>VNĐ</span>
+                  </p>
+                  <p className={styles.statusSource}>{activeRuleInfo.legalTitleText}</p>
                 </div>
-                <p className={styles.statusLabel}>Ngưỡng doanh thu chịu thuế</p>
-                <p className={styles.statusAmount}>
-                  1.000.000.000 <span className={styles.statusCurrency}>VNĐ</span>
-                </p>
-                <p className={styles.statusSource}>Áp dụng theo Nghị định 141/2026/NĐ-CP</p>
-              </div>
+              )}
             </div>
           </div>
         </div>
