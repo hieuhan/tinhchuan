@@ -17,6 +17,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb/Breadcrumb';
 import { FaqAccordion } from '@/components/ui/FaqAccordion/FaqAccordion';
 import type { FaqItemData } from '@/components/ui/FaqAccordion/FaqAccordion';
 import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
+import { generateBreadcrumbSchema, generateFaqSchema } from '@/lib/seo/schema';
 import styles from './article.module.css';
 
 export const metadata: Metadata = {
@@ -24,6 +25,12 @@ export const metadata: Metadata = {
   description:
     'Từ ngày 01/01/2026, ngưỡng doanh thu không chịu thuế đối với hộ, cá nhân kinh doanh bán hàng online được điều chỉnh từ 500 triệu đồng lên 1 tỷ đồng doanh thu/năm.',
 };
+
+const breadcrumbItems = [
+  { label: 'Trang chủ', href: '/' },
+  { label: 'Kiến thức', href: '/kien-thuc' },
+  { label: 'Ngưỡng doanh thu chịu thuế 2026' },
+];
 
 const faqItems: FaqItemData[] = [
   {
@@ -34,6 +41,8 @@ const faqItems: FaqItemData[] = [
         Doanh thu được tính theo năm dương lịch (từ ngày 01/01 đến ngày 31/12), không phải năm tài chính của doanh nghiệp.
       </p>
     ),
+    answerPlainText:
+      'Doanh thu được tính theo năm dương lịch (từ ngày 01/01 đến ngày 31/12), không phải năm tài chính của doanh nghiệp.',
   },
   {
     id: 2,
@@ -43,6 +52,8 @@ const faqItems: FaqItemData[] = [
         Tổng doanh thu từ tất cả các kênh (sàn TMĐT, mạng xã hội, website, cửa hàng...) được cộng dồn để xét ngưỡng 1 tỷ đồng/năm.
       </p>
     ),
+    answerPlainText:
+      'Tổng doanh thu từ tất cả các kênh (sàn TMĐT, mạng xã hội, website, cửa hàng...) được cộng dồn để xét ngưỡng 1 tỷ đồng/năm.',
   },
   {
     id: 3,
@@ -52,12 +63,27 @@ const faqItems: FaqItemData[] = [
         Nếu tổng doanh thu cả năm ≤ 1 tỷ đồng, bạn được hoàn lại số thuế đã bị khấu trừ. Nếu vượt ngưỡng, số thuế sàn đã nộp thay sẽ được trừ vào nghĩa vụ thuế thực tế.
       </p>
     ),
+    answerPlainText:
+      'Nếu tổng doanh thu cả năm ≤ 1 tỷ đồng, bạn được hoàn lại số thuế đã bị khấu trừ. Nếu vượt ngưỡng, số thuế sàn đã nộp thay sẽ được trừ vào nghĩa vụ thuế thực tế.',
   },
 ];
 
 export default function RevenueThresholdArticlePage() {
+  const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems);
+  const faqSchema = generateFaqSchema(faqItems);
+
   return (
     <>
+      {/* Schema.org Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+
       {/* Breadcrumb */}
       <Breadcrumb
         items={[

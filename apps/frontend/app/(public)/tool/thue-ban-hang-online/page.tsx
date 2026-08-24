@@ -15,6 +15,7 @@ import { formatDate } from '@/lib/format';
 import { resolveActiveTaxRule } from './action';
 import TaxCalculator from './TaxCalculator';
 import TaxHistoryAccordion from './TaxHistoryAccordion';
+import { generateBreadcrumbSchema, generateFaqSchema, generateSoftwareAppSchema } from '@/lib/seo/schema';
 import styles from './tool.module.css';
 
 // Render động ở mọi request: tránh Next.js prerender lúc build (tránh lỗi khi DB chưa sẵn sàng lúc Docker build image). Mỗi request tự query DB mới nhất.
@@ -25,6 +26,11 @@ export const metadata: Metadata = {
   description:
     'Tính thuế GTGT và TNCN cho hộ kinh doanh, cá nhân bán hàng online (Shopee, TikTok Shop, Facebook...) theo Nghị định 141/2026/NĐ-CP. Kết quả có căn cứ pháp lý rõ ràng.',
 };
+
+const breadcrumbItems = [
+  { label: 'Trang chủ', href: '/' },
+  { label: 'Tính thuế bán hàng online' },
+];
 
 const miniFaqItems = [
   {
@@ -63,8 +69,32 @@ export default async function OnlineSalesTaxCalculatorPage() {
     effectiveDateText = null;
   }
 
+  // Sinh dữ liệu JSON-LD Schema.org
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tinhchuan.vn';
+  const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems);
+  const faqSchema = generateFaqSchema(miniFaqItems);
+  const softwareAppSchema = generateSoftwareAppSchema({
+    name: metadata.title as string,
+    description: metadata.description as string,
+    url: `${baseUrl}/tool/thue-ban-hang-online`,
+  });
+
   return (
     <>
+      {/* Schema.org Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppSchema) }}
+      />
+
       {/* Breadcrumb */}
       <Breadcrumb
         items={[

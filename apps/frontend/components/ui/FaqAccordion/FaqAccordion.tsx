@@ -8,6 +8,7 @@ export interface FaqItemData {
   id?: string | number;
   question: string;
   answer: React.ReactNode;
+  answerPlainText?: string;
 }
 
 interface FaqAccordionProps {

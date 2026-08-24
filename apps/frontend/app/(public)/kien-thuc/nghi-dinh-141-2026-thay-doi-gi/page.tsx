@@ -17,6 +17,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb/Breadcrumb';
 import { FaqAccordion } from '@/components/ui/FaqAccordion/FaqAccordion';
 import type { FaqItemData } from '@/components/ui/FaqAccordion/FaqAccordion';
 import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
+import { generateBreadcrumbSchema, generateFaqSchema } from '@/lib/seo/schema';
 import styles from './article.module.css';
 
 export const metadata: Metadata = {
@@ -25,39 +26,75 @@ export const metadata: Metadata = {
     'Ngày 29/04/2026, Chính phủ ban hành Nghị định 141/2026/NĐ-CP sửa đổi, bổ sung một số điều của Nghị định 117/2025/NĐ-CP về quản lý thuế đối với hoạt động kinh doanh trên sàn thương mại điện tử và nền tảng số của hộ, cá nhân.',
 };
 
+const breadcrumbItems = [
+  { label: 'Trang chủ', href: '/' },
+  { label: 'Kiến thức', href: '/kien-thuc' },
+  { label: 'Nghị định 141/2026 thay đổi gì' },
+];
+
 const faqItems: FaqItemData[] = [
   {
     id: 1,
-    question: 'Tôi bán trên nhiều sàn thì mỗi sàn tự khấu trừ riêng hay tính gộp?',
+    question: 'Nghị định 141/2026/NĐ-CP có điểm gì mới nổi bật nhất?',
     answer: (
       <p>
-        Mỗi sàn chỉ khấu trừ dựa trên doanh thu phát sinh trên sàn đó. Tuy nhiên, ngưỡng xét miễn thuế (1 tỷ đồng/năm) được tính trên TỔNG doanh thu từ tất cả các kênh. Nếu tổng vượt ngưỡng, bạn phải nộp thuế; nếu không, có thể làm thủ tục hoàn thuế.
+        Thay đổi quan trọng nhất là nâng ngưỡng doanh thu không chịu thuế GTGT và TNCN cho hộ, cá nhân kinh doanh trên sàn TMĐT từ 500 triệu đồng lên 1 tỷ đồng/năm.
       </p>
     ),
+    answerPlainText:
+      'Thay đổi quan trọng nhất là nâng ngưỡng doanh thu không chịu thuế GTGT và TNCN cho hộ, cá nhân kinh doanh trên sàn TMĐT từ 500 triệu đồng lên 1 tỷ đồng/năm.',
   },
   {
     id: 2,
-    question: 'Sàn khấu trừ sai thì tôi làm sao để đòi lại?',
+    question: 'Nghị định 141/2026 có hiệu lực hồi tố từ khi nào?',
     answer: (
       <p>
-        Liên hệ trực tiếp với bộ phận hỗ trợ người bán của sàn để yêu cầu điều chỉnh. Nếu không được giải quyết, bạn có thể khiếu nại lên cơ quan thuế quản lý trực tiếp, kèm theo chứng từ khấu trừ do sàn cấp.
+        Nghị định 141/2026/NĐ-CP được ban hành ngày 29/04/2026 nhưng áp dụng hiệu lực hồi tố từ ngày 01/01/2026 đối với các khoản thu phát sinh từ đầu năm.
       </p>
     ),
+    answerPlainText:
+      'Nghị định 141/2026/NĐ-CP được ban hành ngày 29/04/2026 nhưng áp dụng hiệu lực hồi tố từ ngày 01/01/2026 đối với các khoản thu phát sinh từ đầu năm.',
   },
   {
     id: 3,
-    question: 'Không có mã số thuế thì sàn xử lý thế nào?',
+    question: 'Nếu đã bị sàn khấu trừ thuế trước ngày 29/04/2026 mà doanh thu cả năm ≤ 1 tỷ thì xử lý thế nào?',
     answer: (
       <p>
-        Nếu bạn không cung cấp mã số thuế, sàn vẫn khấu trừ thuế theo tỷ lệ mặc định nhưng sẽ gặp khó khăn khi đối soát và hoàn thuế sau này. Khuyến nghị đăng ký mã số thuế cá nhân tại cơ quan thuế gần nhất.
+        Trường hợp số thuế đã bị khấu trừ nhưng cuối năm tổng doanh thu cả năm từ mọi kênh không quá 1 tỷ đồng, người bán được đề nghị cơ quan thuế hoàn lại hoặc bù trừ số thuế đã nộp thừa khi quyết toán.
       </p>
     ),
+    answerPlainText:
+      'Trường hợp số thuế đã bị khấu trừ nhưng cuối năm tổng doanh thu cả năm từ mọi kênh không quá 1 tỷ đồng, người bán được đề nghị cơ quan thuế hoàn lại hoặc bù trừ số thuế đã nộp thừa khi quyết toán.',
+  },
+  {
+    id: 4,
+    question: 'Nghị định 141/2026 có thay đổi trách nhiệm khấu trừ của sàn TMĐT không?',
+    answer: (
+      <p>
+        Cơ chế khấu trừ và nộp thay thuế của các sàn TMĐT (Shopee, TikTok Shop...) vẫn được giữ nguyên; các sàn vẫn thực hiện nộp thay theo tỷ lệ % quy định trên doanh thu từng đơn hàng.
+      </p>
+    ),
+    answerPlainText:
+      'Cơ chế khấu trừ và nộp thay thuế của các sàn TMĐT (Shopee, TikTok Shop...) vẫn được giữ nguyên; các sàn vẫn thực hiện nộp thay theo tỷ lệ % quy định trên doanh thu từng đơn hàng.',
   },
 ];
 
 export default function Decree141ArticlePage() {
+  const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems);
+  const faqSchema = generateFaqSchema(faqItems);
+
   return (
     <>
+      {/* Schema.org Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -151,7 +188,7 @@ export default function Decree141ArticlePage() {
                 <CheckCircleIcon />
               </div>
               <div className={styles.changeContent}>
-                <strong>Nâng ngưỡng doanh thu không chịu thuế từ 100 triệu lên 1 tỷ đồng/năm:</strong> Hộ, cá nhân có doanh thu từ hoàn kinh doanh trên sàn TMĐT, nền tảng số không vượt quá 1 tỷ đồng/năm thì không phải nộp thuế GTGT và TNCN.
+                <strong>Nâng ngưỡng doanh thu không chịu thuế từ 500 triệu lên 1 tỷ đồng/năm:</strong> Hộ, cá nhân có doanh thu từ hoạt động kinh doanh trên sàn TMĐT, nền tảng số không vượt quá 1 tỷ đồng/năm thì không phải nộp thuế GTGT và TNCN.
               </div>
             </div>
             <div className={styles.changeItem}>

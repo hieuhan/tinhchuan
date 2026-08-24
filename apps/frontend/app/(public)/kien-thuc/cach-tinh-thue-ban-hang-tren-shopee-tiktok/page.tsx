@@ -16,6 +16,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb/Breadcrumb';
 import { FaqAccordion } from '@/components/ui/FaqAccordion/FaqAccordion';
 import type { FaqItemData } from '@/components/ui/FaqAccordion/FaqAccordion';
 import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
+import { generateBreadcrumbSchema, generateFaqSchema } from '@/lib/seo/schema';
 import styles from './article.module.css';
 
 export const metadata: Metadata = {
@@ -23,6 +24,12 @@ export const metadata: Metadata = {
   description:
     'Theo quy định tại Nghị định 117/2025/NĐ-CP, các sàn thương mại điện tử có chức năng thanh toán có trách nhiệm khấu trừ, nộp thay thuế GTGT và thuế TNCN cho hộ kinh doanh.',
 };
+
+const breadcrumbItems = [
+  { label: 'Trang chủ', href: '/' },
+  { label: 'Kiến thức', href: '/kien-thuc' },
+  { label: 'Cách tính thuế bán hàng trên Shopee, TikTok Shop' },
+];
 
 const faqItems: FaqItemData[] = [
   {
@@ -33,6 +40,8 @@ const faqItems: FaqItemData[] = [
         Mỗi sàn chỉ khấu trừ dựa trên doanh thu phát sinh trên sàn đó. Tuy nhiên, ngưỡng xét miễn thuế (1 tỷ đồng/năm) được tính trên TỔNG doanh thu từ tất cả các kênh. Nếu tổng vượt ngưỡng, bạn phải nộp thuế; nếu không, có thể làm thủ tục hoàn thuế.
       </p>
     ),
+    answerPlainText:
+      'Mỗi sàn chỉ khấu trừ dựa trên doanh thu phát sinh trên sàn đó. Tuy nhiên, ngưỡng xét miễn thuế (1 tỷ đồng/năm) được tính trên TỔNG doanh thu từ tất cả các kênh. Nếu tổng vượt ngưỡng, bạn phải nộp thuế; nếu không, có thể làm thủ tục hoàn thuế.',
   },
   {
     id: 2,
@@ -42,6 +51,8 @@ const faqItems: FaqItemData[] = [
         Liên hệ trực tiếp với bộ phận hỗ trợ người bán của sàn để yêu cầu điều chỉnh. Nếu không được giải quyết, bạn có thể khiếu nại lên cơ quan thuế quản lý trực tiếp, kèm theo chứng từ khấu trừ do sàn cấp.
       </p>
     ),
+    answerPlainText:
+      'Liên hệ trực tiếp với bộ phận hỗ trợ người bán của sàn để yêu cầu điều chỉnh. Nếu không được giải quyết, bạn có thể khiếu nại lên cơ quan thuế quản lý trực tiếp, kèm theo chứng từ khấu trừ do sàn cấp.',
   },
   {
     id: 3,
@@ -51,12 +62,27 @@ const faqItems: FaqItemData[] = [
         Nếu bạn không cung cấp mã số thuế, sàn vẫn khấu trừ thuế theo tỷ lệ mặc định nhưng sẽ gặp khó khăn khi đối soát và hoàn thuế sau này. Khuyến nghị đăng ký mã số thuế cá nhân tại cơ quan thuế gần nhất.
       </p>
     ),
+    answerPlainText:
+      'Nếu bạn không cung cấp mã số thuế, sàn vẫn khấu trừ thuế theo tỷ lệ mặc định nhưng sẽ gặp khó khăn khi đối soát và hoàn thuế sau này. Khuyến nghị đăng ký mã số thuế cá nhân tại cơ quan thuế gần nhất.',
   },
 ];
 
 export default function KnowledgeArticlePage() {
+  const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems);
+  const faqSchema = generateFaqSchema(faqItems);
+
   return (
     <>
+      {/* Schema.org Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
