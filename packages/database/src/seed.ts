@@ -20,9 +20,20 @@ async function main() {
   console.log('🌱 Bắt đầu seed dữ liệu ban đầu...');
 
   // 1. Seed tài khoản Admin ban đầu
-  // ĐỔI PASSWORD NÀY SAU KHI SEED LẦN ĐẦU
-  const tempPassword = 'AdminPassword123!';
-  const passwordHash = bcrypt.hashSync(tempPassword, 10);
+  // Mật khẩu lấy từ biến môi trường ADMIN_INITIAL_PASSWORD
+  let adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!adminPassword) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '❌ ADMIN_INITIAL_PASSWORD chưa được set trong biến môi trường! Vui lòng set ADMIN_INITIAL_PASSWORD trước khi seed trong production.'
+      );
+    }
+    adminPassword = 'DevAdminPasswordTemp123!';
+    console.warn(
+      '⚠️ CẢNH BÁO: Đang dùng mật khẩu admin tạm thời cho dev (DevAdminPasswordTemp123!).'
+    );
+  }
+  const passwordHash = bcrypt.hashSync(adminPassword, 10);
 
   let adminUser = await db.query.users.findFirst({
     where: eq(users.email, 'admin@tinhchuan.vn'),

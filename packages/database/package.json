@@ -9,6 +9,7 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
+    "db:reset-admin-password": "tsx src/reset-admin-password.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
