@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "components": [
+    {
+      "name": "Button",
+      "path": "components/ui/Button/Button.tsx",
+      "description": "Nút bấm hành động với các variant primary và link, hỗ trợ icon và Next.js Link",
+      "props": {
+        "variant": { "type": "'primary' | 'link'", "default": "'primary'" },
+        "href": { "type": "string", "optional": true },
+        "icon": { "type": "React.ReactNode", "optional": true },
+        "children": { "type": "React.ReactNode" },
+        "className": { "type": "string", "optional": true },
+        "onClick": { "type": "() => void", "optional": true },
+        "type": { "type": "'button' | 'submit' | 'reset'", "default": "'button'" },
+        "aria-label": { "type": "string", "optional": true }
+      }
+    },
+    {
+      "name": "Breadcrumb",
+      "path": "components/ui/Breadcrumb/Breadcrumb.tsx",
+      "description": "Điều hướng phân cấp breadcrumb hỗ trợ icon, link và mục hiện tại",
+      "props": {
+        "items": { "type": "BreadcrumbItem[]" }
+      }
+    },
+    {
+      "name": "FaqAccordion",
+      "path": "components/ui/FaqAccordion/FaqAccordion.tsx",
+      "description": "Danh sách câu hỏi thường gặp dạng accordion có animation mở/đóng và hỗ trợ accessibility",
+      "props": {
+        "items": { "type": "FaqItemData[]" },
+        "defaultOpenIndex": { "type": "number", "optional": true }
+      }
+    },
+    {
+      "name": "FeatureCard",
+      "path": "components/ui/FeatureCard/FeatureCard.tsx",
+      "description": "Thẻ hiển thị tính năng / ưu điểm nổi bật của nền tảng kèm icon và mô tả",
+      "props": {
+        "icon": { "type": "React.ReactNode" },
+        "title": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    {
+      "name": "StepCard",
+      "path": "components/ui/StepCard/StepCard.tsx",
+      "description": "Thẻ hiển thị các bước trong quy trình hoạt động kèm số thứ tự, icon và mô tả",
+      "props": {
+        "step": { "type": "number | string" },
+        "icon": { "type": "React.ReactNode" },
+        "title": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    {
+      "name": "ArticleCard",
+      "path": "components/ui/ArticleCard/ArticleCard.tsx",
+      "description": "Thẻ bài viết kiến thức tóm tắt / liên quan kèm icon và tiêu đề ngang hàng nhau, ngày đăng, trạng thái hiệu lực hoặc mũi tên điều hướng",
+      "props": {
+        "href": { "type": "string", "optional": true },
+        "icon": { "type": "React.ReactNode" },
+        "title": { "type": "string" },
+        "description": { "type": "string", "optional": true },
+        "date": { "type": "string" },
+        "status": { "type": "string", "optional": true },
+        "showCalendarIcon": { "type": "boolean", "optional": true },
+        "onClick": { "type": "() => void", "optional": true }
+      }
+    }
+  ]
+}

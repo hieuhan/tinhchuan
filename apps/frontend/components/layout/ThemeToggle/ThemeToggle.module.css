@@ -1,0 +1,45 @@
+.themeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  color: var(--color-ink-muted);
+  font-size: 1.125rem;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.themeToggle:hover {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.sunIcon,
+.moonIcon {
+  position: absolute;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  font-size: 1.125rem;
+}
+
+:global(.dark) .sunIcon {
+  opacity: 0;
+  transform: rotate(-90deg);
+}
+
+:global(.dark) .moonIcon {
+  opacity: 1;
+  transform: rotate(0deg);
+}
+
+:global(:not(.dark)) .sunIcon {
+  opacity: 1;
+  transform: rotate(0deg);
+}
+
+:global(:not(.dark)) .moonIcon {
+  opacity: 0;
+  transform: rotate(90deg);
+}
