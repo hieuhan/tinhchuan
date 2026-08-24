@@ -13,6 +13,8 @@ KHÔNG dùng Tailwind ở đây.
 `app/layout.tsx`, KHÔNG load qua thẻ `<link>` trỏ fonts.googleapis.com
 (tránh phụ thuộc mạng ngoài, tối ưu Core Web Vitals).
 
+**Biến NEXT_PUBLIC_***: Đổi biến `NEXT_PUBLIC_*` trong `.env` khi không sửa code sẽ bị Docker BuildKit cache layer `npm run build`, cần rebuild với cờ `--no-cache` để Next.js inline giá trị mới.
+
 **7 nguyên tắc UI bắt buộc cho nội dung liên quan luật/thuế** (áp dụng
 MỌI trang Tool, không rút gọn):
 

@@ -133,6 +133,7 @@ services:
       dockerfile: Dockerfile
       args:
         APP_NAME: frontend
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID}
     container_name: tinhchuan-frontend
     platform: linux/arm64
     restart: unless-stopped
@@ -143,6 +144,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
+      NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID}
       TZ: ${TIMEZONE}
     ports: ["127.0.0.1:3000:3000"]
     depends_on:
