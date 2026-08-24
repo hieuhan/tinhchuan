@@ -65,7 +65,10 @@ export default async function OnlineSalesTaxCalculatorPage() {
     }
   } catch (err) {
     // Vì render động ở mỗi request, khi DB lỗi thì log server và ẩn badge ngày để tránh hiển thị thông tin sai căn cứ
-    console.error('[OnlineSalesTaxCalculatorPage] Lỗi khi truy vấn active tax rule:', err);
+    console.error(
+      '[OnlineSalesTaxCalculatorPage] Lỗi khi truy vấn active tax rule:',
+      err instanceof Error ? err.message : err
+    );
     effectiveDateText = null;
   }
 

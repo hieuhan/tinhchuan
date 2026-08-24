@@ -95,7 +95,10 @@ export default async function HomePage() {
     }
   } catch (err) {
     // Vì render động ở mỗi request, khi DB lỗi thì log server và ẩn Status Card để tránh hiển thị thông tin sai căn cứ
-    console.error('[HomePage] Lỗi khi truy vấn active tax rule:', err);
+    console.error(
+      '[HomePage] Lỗi khi truy vấn active tax rule:',
+      err instanceof Error ? err.message : err
+    );
     activeRuleInfo = null;
   }
 
