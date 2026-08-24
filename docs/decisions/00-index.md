@@ -16,3 +16,4 @@
 | 005 | CI/CD: Không dùng GitHub Actions, deploy thủ công | Đang hiệu lực | [005-no-github-actions.md](./005-no-github-actions.md) |
 | 006 | Bảng `users`: chưa cần phân quyền (role) | Đang hiệu lực | [006-users-table-no-role.md](./006-users-table-no-role.md) |
 | 007 | `content_page.content`: markdown text, không dùng block-based JSON | Đang hiệu lực | [007-content-page-markdown.md](./007-content-page-markdown.md) |
+| 008 | Hoãn cột `content_page.structuredData` (jsonb) sang Phase 2 | Đang hiệu lực | [008-structured-data-phase-2.md](./008-structured-data-phase-2.md) |
