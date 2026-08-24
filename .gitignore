@@ -5,4 +5,5 @@ bootstrap/
 data/
 logs/
 backups/
+design-source/
 .DS_Store

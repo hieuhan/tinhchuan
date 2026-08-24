@@ -3,7 +3,7 @@
 > File này GHI ĐÈ TOÀN BỘ mỗi phiên làm việc - KHÔNG cộng dồn lịch sử.
 > Lịch sử quyết định kiến trúc xem `docs/decisions/00-index.md`.
 
-**Cập nhật lần cuối**: 2026-08-21
+**Cập nhật lần cuối**: 2026-08-22
 
 ## Đang ở Phase nào
 
@@ -29,22 +29,17 @@ Phase 1 - Tuần 1 (Nền tảng), xem `docs/checklist-phase-1.md`.
 - Cập nhật toàn bộ bộ tài liệu AI Agent: `AGENTS.md`, `CLAUDE.md`,
   `GEMINI.md`, `docs/00-glossary.md`, `docs/01-status.md` (file này),
   `docs/decisions/00-index.md`, `packages/database/CONTEXT.md`.
+- Định nghĩa schema Drizzle 6 bảng + seed script (`packages/database/src/schema/index.ts` & `src/seed.ts`), đã generate migration, push schema xuống DB và seed dữ liệu ban đầu thành công.
 
 ## Đang làm / Tiếp theo
 
-- **Viết `packages/database/src/schema/index.ts` + `src/seed.ts` thật**
-  (đã có prompt chi tiết để giao cho AI Agent, chưa xác nhận đã chạy) -
-  đây là việc CHẶN mọi việc phía sau (Formula Engine, UI Tool 1 cần
-  bảng thật mới chạy được).
-- Sau khi có schema thật: `npm run db:generate` + `npm run db:push`,
-  chạy seed, xác nhận build.
 - Xóa các GitHub Secrets không còn dùng (`SSH_PRIVATE_KEY`,
   `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `MAC_MINI_SSH_HOST`,
   `MAC_MINI_SSH_USER`) theo ADR #005.
 - Xóa job `deploy` khỏi `.github/workflows/deploy.yml` (giữ `ci.yml` nếu
   muốn) theo ADR #005.
-- Bắt đầu Checklist Phase 1 - Tuần 2: Formula Engine + UI Tool 1 (sau khi
-  có schema thật).
+- Bắt đầu Checklist Phase 1 - Tuần 2: Formula Engine + UI Tool 1 (đã
+  có schema DB thật).
 
 ## Việc CHƯA làm (không tự ý bắt đầu)
 

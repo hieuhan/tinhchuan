@@ -59,11 +59,18 @@ với `src/schema/index.ts`).
 
 ## Đã có sẵn (tránh tạo trùng)
 
-- `src/index.ts` - export `db` client dùng chung, KHÔNG tự tạo `Pool`
-  hay client mới ở nơi khác.
-- `src/schema/index.ts` - **TODO, chưa định nghĩa bảng nào** (xem trạng
-  thái thật ở `docs/01-status.md`).
-- `src/seed.ts` - **TODO, chưa tồn tại**.
+- `src/schema/index.ts` - 6 bảng + bảng nối `content_page_tax_rule` đã định
+  nghĩa đầy đủ (`users`, `legal_source`, `tax_rule_category`,
+  `tax_rule_version`, `source_conflict`, `content_page`).
+- `src/client.ts` - tạo `Pool` + `drizzle(pool, { schema })`, cache global
+  chỉ ở non-production.
+- `src/index.ts` - `export { db } from './client'; export * from './schema';`
+  - điểm import DUY NHẤT cho `apps/frontend`/`apps/backend`.
+- `src/seed.ts` - seed idempotent: 1 admin, 1 `legal_source` (Nghị định
+  141/2026/NĐ-CP), 1 `tax_rule_category`, 1 `tax_rule_version` (ngưỡng 1
+  tỷ, `status='approved'`). Chạy: `npm run db:seed --workspace=packages/database`.
+- `src/migrate.ts` - áp migration đã generate trong `drizzle/`. Chạy:
+  `npm run db:migrate --workspace=packages/database`.
 
 ## KHÔNG được làm ở đây
 
