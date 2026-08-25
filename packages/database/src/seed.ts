@@ -68,18 +68,29 @@ async function main() {
         documentNumber: docNumber,
         documentType: 'Nghị định',
         title:
-          'Nghị định 141/2026/NĐ-CP quy định chi tiết ngưỡng doanh thu chịu thuế và biểu thuế đối với hộ, cá nhân kinh doanh',
+          'Nghị định số 141/2026/NĐ-CP sửa đổi, bổ sung một số điều của Nghị định số 68/2026/NĐ-CP quy định về chính sách thuế đối với hộ kinh doanh, cá nhân kinh doanh',
         issuingBody: 'Chính phủ',
         issuedDate: '2026-04-29',
         effectiveDate: '2026-01-01',
         sourceUrl:
-          'https://thuvienphapluat.vn/van-ban/Thuethiet-chu-the/Nghi-dinh-141-2026-ND-CP-placeholder',
+          'https://vanban.chinhphu.vn/?pageid=27160&docid=217960',
       })
       .returning();
     legalDoc = insertedDoc;
     console.log('✅ Đã tạo legal_source:', legalDoc.documentNumber);
   } else {
-    console.log('ℹ️ legal_source đã tồn tại:', legalDoc.documentNumber);
+    const [updatedDoc] = await db
+      .update(legalSource)
+      .set({
+        title:
+          'Nghị định số 141/2026/NĐ-CP sửa đổi, bổ sung một số điều của Nghị định số 68/2026/NĐ-CP quy định về chính sách thuế đối với hộ kinh doanh, cá nhân kinh doanh',
+        sourceUrl:
+          'https://vanban.chinhphu.vn/?pageid=27160&docid=217960',
+      })
+      .where(eq(legalSource.id, legalDoc.id))
+      .returning();
+    legalDoc = updatedDoc;
+    console.log('ℹ️ Đã cập nhật legal_source:', legalDoc.documentNumber);
   }
 
   // 3. Seed danh mục quy tắc thuế (tax_rule_category)

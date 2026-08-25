@@ -267,33 +267,48 @@ export default function Decree141ArticlePage() {
               <div className={styles.legalContent}>
                 <ul className={styles.legalList}>
                   <li>
-                    <Link href="/van-ban/nghi-dinh-141-2026-nd-cp" className={styles.legalDocLink}>
-                      Nghị định 141/2026/NĐ-CP ngày 29/04/2026 của Chính phủ
-                    </Link>
+                    <a
+                      href="https://vanban.chinhphu.vn/?pageid=27160&docid=217960"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Nghị định 141/2026/NĐ-CP ngày 29/04/2026 của Chính phủ về sửa đổi, bổ sung chính sách thuế hộ kinh doanh, cá nhân kinh doanh
+                    </a>
                   </li>
                   <li>
-                    <Link href="/van-ban/nghi-dinh-68-2026-nd-cp" className={styles.legalDocLink}>
-                      Nghị định 68/2026/NĐ-CP ngày 05/03/2026 của Chính phủ
-                    </Link>
+                    <a
+                      href="https://vanban.chinhphu.vn/?pageid=27160&docid=217111"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Nghị định 68/2026/NĐ-CP ngày 05/03/2026 của Chính phủ quy định chính sách thuế và quản lý thuế đối với hộ kinh doanh, cá nhân kinh doanh
+                    </a>
                   </li>
                   <li>
-                    <Link href="/van-ban/thong-tu-40-2021-tt-btc" className={styles.legalDocLink}>
-                      Thông tư 40/2021/TT-BTC ngày 01/06/2021 của Bộ Tài chính
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/van-ban/cong-van-4100-tct-kk" className={styles.legalDocLink}>
-                      Công văn 4100/TCT-KK ngày 16/10/2023 của Tổng cục Thuế
-                    </Link>
+                    <a
+                      href="https://congbao.chinhphu.vn/van-ban/thong-tu-so-40-2021-tt-btc-33850.htm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalDocLink}
+                    >
+                      Thông tư 40/2021/TT-BTC ngày 01/06/2021 của Bộ Tài chính hướng dẫn thuế GTGT, TNCN và quản lý thuế đối với hộ kinh doanh, cá nhân kinh doanh
+                    </a>
                   </li>
                 </ul>
               </div>
-              <Link href="/van-ban/nghi-dinh-141-2026-nd-cp" className={styles.legalLink}>
+              <a
+                href="https://vanban.chinhphu.vn/?pageid=27160&docid=217960"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.legalLink}
+              >
                 Xem văn bản gốc
                 <span className={styles.linkArrow}>
                   <ArrowRightIcon />
                 </span>
-              </Link>
+              </a>
             </div>
 
             {/* Lịch sử thay đổi quy định */}
@@ -314,18 +329,8 @@ export default function Decree141ArticlePage() {
                     <span className={styles.historyDate}>05/03/2026: </span>
                     Nghị định 68/2026/NĐ-CP - ban hành
                   </li>
-                  <li>
-                    <span className={styles.historyDate}>17/10/2023: </span>
-                    Công văn 4100/TCT-KK - hướng dẫn thực hiện
-                  </li>
                 </ul>
               </div>
-              <Link href="/van-ban" className={styles.historyLink}>
-                Xem chi tiết
-                <span className={styles.linkArrow}>
-                  <ArrowRightIcon />
-                </span>
-              </Link>
             </div>
           </div>
         </div>

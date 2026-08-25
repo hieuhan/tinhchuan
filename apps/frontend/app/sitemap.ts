@@ -19,6 +19,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${baseUrl}/kien-thuc`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: `${baseUrl}/kien-thuc/nguong-doanh-thu-chiu-thue-ban-hang-online-2026`,
       lastModified: currentDate,
       changeFrequency: 'monthly',

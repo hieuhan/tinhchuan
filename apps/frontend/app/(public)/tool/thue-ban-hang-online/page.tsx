@@ -151,7 +151,7 @@ export default async function OnlineSalesTaxCalculatorPage() {
               <ul className={styles.legalList}>
                 <li>
                   <a
-                    href="https://thuvienphapluat.vn/van-ban/Thue-Phi-Le-Phi/Nghi-quyet-198-2025-QH15-Chinh-sach-thue-doi-voi-doanh-nghiep-nho-sieu-nho-va-ho-ca-nhan-kinh-doanh-610289.aspx"
+                    href="https://xaydungchinhsach.chinhphu.vn/nghi-quyet-198-2025-qh15-ve-mot-so-co-che-chinh-sach-dac-biet-phat-trien-kinh-te-tu-nhan-119250517191622422.htm"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.legalDocLink}
@@ -161,7 +161,7 @@ export default async function OnlineSalesTaxCalculatorPage() {
                 </li>
                 <li>
                   <a
-                    href="https://thuvienphapluat.vn/van-ban/Thue-Phi-Le-Phi/Nghi-dinh-68-2026-ND-CP-placeholder"
+                    href="https://vanban.chinhphu.vn/?pageid=27160&docid=217111"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.legalDocLink}
@@ -171,7 +171,7 @@ export default async function OnlineSalesTaxCalculatorPage() {
                 </li>
                 <li>
                   <a
-                    href="https://thuvienphapluat.vn/van-ban/Thuethiet-chu-the/Nghi-dinh-141-2026-ND-CP-placeholder"
+                    href="https://vanban.chinhphu.vn/?pageid=27160&docid=217960"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.legalDocLink}

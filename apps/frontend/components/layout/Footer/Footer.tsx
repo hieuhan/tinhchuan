@@ -17,18 +17,13 @@ export function Footer() {
             </span>
           </Link>
         </div>
+        {/* TODO: bật lại Link khi có nội dung Giới thiệu/Điều khoản/Chính sách bảo mật thật */}
         <div className={styles.footerLinks}>
-          <Link href="/gioi-thieu" className={styles.footerLink}>
-            Giới thiệu
-          </Link>
+          <span className={styles.footerText}>Giới thiệu</span>
           <span className={styles.footerDivider}>|</span>
-          <Link href="/dieu-khoan" className={styles.footerLink}>
-            Điều khoản sử dụng
-          </Link>
+          <span className={styles.footerText}>Điều khoản sử dụng</span>
           <span className={styles.footerDivider}>|</span>
-          <Link href="/bao-mat" className={styles.footerLink}>
-            Chính sách bảo mật
-          </Link>
+          <span className={styles.footerText}>Chính sách bảo mật</span>
         </div>
         <p className={styles.footerCopy}>© 2026 TinhChuan.vn. All rights reserved.</p>
       </div>
