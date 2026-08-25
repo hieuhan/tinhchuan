@@ -10,3 +10,5 @@ design-source/
 *.tsbuildinfo
 .DS_Store
 .vs/
+lighthouse-reports/*
+!lighthouse-reports/lighthouse-summary.md
