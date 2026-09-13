@@ -22,6 +22,8 @@ import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
 import { generateBreadcrumbSchema, generateFaqSchema } from '@/lib/seo/schema';
 import styles from './article.module.css';
 
+export const dynamic = 'force-dynamic';
+
 interface DynamicArticlePageProps {
   params: Promise<{ slug: string }>;
 }
