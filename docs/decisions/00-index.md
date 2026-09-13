@@ -20,4 +20,5 @@
 | 009 | Thống nhất quản lý biến môi trường bằng Symlink / Hardlink | Đang hiệu lực | [009-env-management-symlink.md](./009-env-management-symlink.md) |
 | 010 | Schema Drizzle cho Phase 2: Phát hiện văn bản mới (AI Content Pipeline) | Đang hiệu lực | [010-phase2-crawl-detection-schema.md](./010-phase2-crawl-detection-schema.md) |
 | 011 | Kiến trúc Multi-Source Parser Registry cho Crawl Pipeline | Đang hiệu lực | [011-multi-source-parser-architecture.md](./011-multi-source-parser-architecture.md) |
+| 012 | Kịch bản kiểm thử (Test script) tuyệt đối không thao tác trực tiếp lên dữ liệu Production | Đang hiệu lực | [012-test-scripts-must-not-touch-production-data.md](./012-test-scripts-must-not-touch-production-data.md) |
 
