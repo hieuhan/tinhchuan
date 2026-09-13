@@ -39,10 +39,6 @@
 - **Telegram Notification (Mảnh cuối cùng của Stage 4 / Phase 2)**:
   - Xây dựng helper `apps/backend/lib/telegram.ts` (`sendTelegramNotification`) gửi thông báo HTML trực tiếp tới Telegram Bot khi có văn bản mới đạt `status = 'pending_review'`.
 
-## Bài học kinh nghiệm
-
-- **Bảo vệ Dữ liệu Production khỏi Script Test**: Kịch bản kiểm thử/script test trong `scratch/` tuyệt đối KHÔNG được thao tác nối chuỗi dữ liệu rác (như `+ ' [Đã duyệt nội dung nháp]'`) hoặc nạp văn bản chưa làm sạch trực tiếp vào DB production mà không có cơ chế cách ly/rollback tự động.
-
 ## Đang làm / Tiếp theo
 
 1. Chuẩn bị kế hoạch cho Phase 3 (Phát triển 4/5 Tool tính thuế còn lại ngoài Tool 1).
