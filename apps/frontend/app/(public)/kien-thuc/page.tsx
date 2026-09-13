@@ -1,10 +1,14 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { FileTextIcon } from '@/components/icons';
+import { db, contentPage } from '@tinhchuan/database';
+import { eq, desc } from 'drizzle-orm';
+import { FileTextIcon, CartIcon, ScaleIcon } from '@/components/icons';
 import { Breadcrumb } from '@/components/ui/Breadcrumb/Breadcrumb';
 import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
 import { generateBreadcrumbSchema } from '@/lib/seo/schema';
 import styles from './kien-thuc.module.css';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Thư viện kiến thức Thuế cá nhân & Bán hàng online - TinhChuan.vn',
@@ -17,33 +21,40 @@ const breadcrumbItems = [
   { label: 'Kiến thức' },
 ];
 
-// TODO Phase 2: query content_page (status='approved', pageType='knowledge') từ DB thay cho mảng hardcode
-const knowledgeArticles = [
-  {
-    href: '/kien-thuc/nguong-doanh-thu-chiu-thue-ban-hang-online-2026',
-    title: 'Ngưỡng doanh thu chịu thuế bán hàng online 2026 là bao nhiêu?',
-    description:
-      'Chi tiết quy định miễn thuế dưới 1 tỷ đồng/năm và cách tính thuế khi doanh thu vượt ngưỡng theo luật mới.',
-    date: 'Hiệu lực từ 01/01/2026',
-  },
-  {
-    href: '/kien-thuc/cach-tinh-thue-ban-hang-tren-shopee-tiktok',
-    title: 'Cách tính thuế bán hàng trên Shopee, TikTok Shop',
-    description:
-      'Sàn TMĐT chính thức khấu trừ thuế từ 2026. Hướng dẫn cách tính thuế GTGT 1% + TNCN 0.5% và cách kê khai chuẩn.',
-    date: 'Hiệu lực từ 01/01/2026',
-  },
-  {
-    href: '/kien-thuc/nghi-dinh-141-2026-thay-doi-gi',
-    title: 'Nghị định 141/2026/NĐ-CP thay đổi gì về thuế bán hàng online?',
-    description:
-      'Nâng ngưỡng miễn thuế lên 1 tỷ đồng/năm, chấm dứt thuế khoán. Phân tích các điểm mới cốt lõi hộ kinh doanh cần biết.',
-    date: 'Hiệu lực từ 01/01/2026',
-  },
-];
+function getArticleIcon(slug: string) {
+  if (slug.includes('shopee') || slug.includes('tiktok') || slug.includes('doanh-thu')) {
+    return <CartIcon />;
+  }
+  if (slug.includes('nghi-dinh') || slug.includes('nghi-quyet') || slug.includes('luat')) {
+    return <ScaleIcon />;
+  }
+  return <FileTextIcon />;
+}
 
-export default function KnowledgePage() {
+export default async function KnowledgePage() {
   const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbItems);
+
+  let articles: Array<{
+    slug: string;
+    title: string;
+    metaDescription: string;
+    publishedAt: Date | null;
+  }> = [];
+
+  try {
+    articles = await db
+      .select({
+        slug: contentPage.slug,
+        title: contentPage.title,
+        metaDescription: contentPage.metaDescription,
+        publishedAt: contentPage.publishedAt,
+      })
+      .from(contentPage)
+      .where(eq(contentPage.status, 'published'))
+      .orderBy(desc(contentPage.publishedAt));
+  } catch (err) {
+    console.error('[KnowledgePage] Lỗi truy vấn bài viết từ DB:', err);
+  }
 
   return (
     <>
@@ -61,17 +72,27 @@ export default function KnowledgePage() {
         </div>
 
         <div className={styles.articlesGrid}>
-          {knowledgeArticles.map((article) => (
-            <ArticleCard
-              key={article.href}
-              href={article.href}
-              icon={<FileTextIcon />}
-              title={article.title}
-              description={article.description}
-              date={article.date}
-              showCalendarIcon
-            />
-          ))}
+          {articles.map((article) => {
+            const dateStr = article.publishedAt
+              ? new Date(article.publishedAt).toLocaleDateString('vi-VN', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                })
+              : 'Hiệu lực từ 01/01/2026';
+
+            return (
+              <ArticleCard
+                key={article.slug}
+                href={`/kien-thuc/${article.slug}`}
+                icon={getArticleIcon(article.slug)}
+                title={article.title}
+                description={article.metaDescription}
+                date={dateStr}
+                showCalendarIcon
+              />
+            );
+          })}
         </div>
       </div>
     </>

@@ -9,4 +9,6 @@ design-source/
 .temp/
 *.tsbuildinfo
 .DS_Store
-.vs/
+.vs/scratch/
+lighthouse-reports/
+

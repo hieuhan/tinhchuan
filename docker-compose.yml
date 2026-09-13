@@ -114,6 +114,9 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
       AUTH_SECRET: ${AUTH_SECRET}
       TZ: ${TIMEZONE}

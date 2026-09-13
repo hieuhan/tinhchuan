@@ -8,6 +8,34 @@
       "when": 1787416969428,
       "tag": "0000_curved_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789234044076,
+      "tag": "0001_thick_nekra",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789238480598,
+      "tag": "0002_known_jubilee",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789269610026,
+      "tag": "0003_purple_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789308799497,
+      "tag": "0004_dizzy_bastion",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 /* ===== CSS Variables (Design Tokens) ===== */
 :root {
-  --color-primary: #2F5FAD;
+  --color-primary: #3B71CA;
   --color-paper: #FAFAF8;
   --color-surface: #FFFFFF;
   --color-ink: #262A33;
@@ -47,7 +47,7 @@
 }
 
 .dark {
-  --color-primary: #6B93D6;
+  --color-primary: #3B71CA;
   --color-paper: #1C1F24;
   --color-surface: #24272D;
   --color-ink: #E8E9EA;

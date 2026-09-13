@@ -10,7 +10,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 
 async function main() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  let connectionString = process.env.DATABASE_URL;
+  if (connectionString?.includes('@postgres:')) {
+    connectionString = connectionString.replace('@postgres:', '@127.0.0.1:');
+  }
+  const pool = new Pool({ connectionString });
   const db = drizzle(pool);
   await migrate(db, { migrationsFolder: './drizzle' });
   await pool.end();

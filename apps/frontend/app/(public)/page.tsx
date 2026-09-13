@@ -17,6 +17,8 @@ import { FeatureCard } from '@/components/ui/FeatureCard/FeatureCard';
 import { ArticleCard } from '@/components/ui/ArticleCard/ArticleCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion/FaqAccordion';
 import type { FaqItemData } from '@/components/ui/FaqAccordion/FaqAccordion';
+import { db, contentPage } from '@tinhchuan/database';
+import { eq, desc } from 'drizzle-orm';
 import { formatDate, formatVnd } from '@/lib/format';
 import { resolveActiveTaxRule } from './tool/thue-ban-hang-online/action';
 import styles from './home.module.css';
@@ -100,6 +102,30 @@ export default async function HomePage() {
       err instanceof Error ? err.message : err
     );
     activeRuleInfo = null;
+  }
+
+  // Lấy danh sách bài viết mới từ DB
+  let latestArticles: Array<{
+    slug: string;
+    title: string;
+    metaDescription: string;
+    publishedAt: Date | null;
+  }> = [];
+
+  try {
+    latestArticles = await db
+      .select({
+        slug: contentPage.slug,
+        title: contentPage.title,
+        metaDescription: contentPage.metaDescription,
+        publishedAt: contentPage.publishedAt,
+      })
+      .from(contentPage)
+      .where(eq(contentPage.status, 'published'))
+      .orderBy(desc(contentPage.publishedAt))
+      .limit(3);
+  } catch (err) {
+    console.error('[HomePage] Lỗi khi truy vấn bài viết mới:', err);
   }
 
   return (
@@ -206,32 +232,27 @@ export default async function HomePage() {
             {/* Kiến thức mới cập nhật */}
             <div className={styles.knowledgeSection}>
               <h2 className={styles.sectionTitle}>Kiến thức mới cập nhật</h2>
-              {/* TODO: query content_page (status='approved', pageType='knowledge') */}
               <div className={styles.articleList}>
-                <ArticleCard
-                  href="/kien-thuc/nguong-doanh-thu-chiu-thue-ban-hang-online-2026"
-                  icon={<FileTextIcon />}
-                  title="Ngưỡng doanh thu chịu thuế bán hàng online 2026 là bao nhiêu?"
-                  description="Cập nhật ngưỡng doanh thu chịu thuế và các quy định quan trọng áp dụng từ năm 2026."
-                  date="18/08/2026"
-                  status="Đang hiệu lực"
-                />
-                <ArticleCard
-                  href="/kien-thuc/cach-tinh-thue-ban-hang-tren-shopee-tiktok"
-                  icon={<CartIcon />}
-                  title="Cách tính thuế bán hàng trên Shopee, TikTok Shop"
-                  description="Hướng dẫn chi tiết cách tính thuế và tỷ lệ khấu trừ khi bán hàng trên sàn TMĐT."
-                  date="16/08/2026"
-                  status="Đang hiệu lực"
-                />
-                <ArticleCard
-                  href="/kien-thuc/nghi-dinh-141-2026-thay-doi-gi"
-                  icon={<ScaleIcon />}
-                  title="Nghị định 141/2026 thay đổi gì về thuế hộ kinh doanh?"
-                  description="Tổng hợp các điểm mới nổi bật theo Nghị định 141/2026/NĐ-CP."
-                  date="15/08/2026"
-                  status="Đang hiệu lực"
-                />
+                {latestArticles.map((art) => {
+                  const dateStr = art.publishedAt
+                    ? new Date(art.publishedAt).toLocaleDateString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })
+                    : '18/08/2026';
+                  return (
+                    <ArticleCard
+                      key={art.slug}
+                      href={`/kien-thuc/${art.slug}`}
+                      icon={art.slug.includes('shopee') || art.slug.includes('doanh-thu') ? <CartIcon /> : art.slug.includes('nghi-dinh') || art.slug.includes('nghi-quyet') ? <ScaleIcon /> : <FileTextIcon />}
+                      title={art.title}
+                      description={art.metaDescription}
+                      date={dateStr}
+                      status="Đang hiệu lực"
+                    />
+                  );
+                })}
               </div>
             </div>
 

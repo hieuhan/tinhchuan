@@ -18,4 +18,6 @@
 | 007 | `content_page.content`: markdown text, không dùng block-based JSON | Đang hiệu lực | [007-content-page-markdown.md](./007-content-page-markdown.md) |
 | 008 | Hoãn cột `content_page.structuredData` (jsonb) sang Phase 2 | Đang hiệu lực | [008-structured-data-phase-2.md](./008-structured-data-phase-2.md) |
 | 009 | Thống nhất quản lý biến môi trường bằng Symlink / Hardlink | Đang hiệu lực | [009-env-management-symlink.md](./009-env-management-symlink.md) |
+| 010 | Schema Drizzle cho Phase 2: Phát hiện văn bản mới (AI Content Pipeline) | Đang hiệu lực | [010-phase2-crawl-detection-schema.md](./010-phase2-crawl-detection-schema.md) |
+| 011 | Kiến trúc Multi-Source Parser Registry cho Crawl Pipeline | Đang hiệu lực | [011-multi-source-parser-architecture.md](./011-multi-source-parser-architecture.md) |
 

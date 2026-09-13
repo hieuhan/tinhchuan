@@ -1,0 +1,1 @@
+ALTER TABLE "crawl_detected_item" RENAME COLUMN "pdf_file_url" TO "source_file_url";

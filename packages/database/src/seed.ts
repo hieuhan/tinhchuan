@@ -8,7 +8,9 @@ import {
   legalSource,
   taxRuleCategory,
   taxRuleVersion,
+  crawlWatchSource,
 } from './schema';
+
 
 // Tải biến môi trường từ file .env ở gốc dự án
 if (!process.env.DATABASE_URL) {
@@ -16,7 +18,16 @@ if (!process.env.DATABASE_URL) {
   loadEnv({ path: path.resolve(process.cwd(), '../../.env') });
 }
 
+if (process.env.DATABASE_URL?.includes('@postgres:')) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL.replace(
+    '@postgres:',
+    '@127.0.0.1:'
+  );
+}
+
 async function main() {
+
+
   console.log('🌱 Bắt đầu seed dữ liệu ban đầu...');
 
   // 1. Seed tài khoản Admin ban đầu
@@ -147,7 +158,63 @@ async function main() {
     console.log('ℹ️ tax_rule_version đã tồn tại ID:', existingVersion.id);
   }
 
+  // 5. Seed crawl_watch_source (Công báo Chính phủ)
+  const watchSourceListingUrl = 'https://congbao.chinhphu.vn/van-ban-dang-cong-bao.htm';
+  let watchSource = await db.query.crawlWatchSource.findFirst({
+    where: eq(crawlWatchSource.listingUrl, watchSourceListingUrl),
+  });
+
+  if (!watchSource) {
+    const [insertedSource] = await db
+      .insert(crawlWatchSource)
+      .values({
+        name: 'Công báo Chính phủ - Văn bản đăng công báo',
+        listingUrl: watchSourceListingUrl,
+        sourceType: 'government_portal',
+        parserKey: 'congbao_chinhphu',
+        isActive: true,
+        lastCheckStatus: 'never_run',
+        consecutiveFailures: 0,
+      })
+      .returning();
+    console.log('✅ Đã tạo crawl_watch_source:', insertedSource.name);
+  } else {
+    console.log('ℹ️ crawl_watch_source đã tồn tại:', watchSource.name);
+  }
+
+  // 6. Seed crawl_watch_source 2 (Hệ thống văn bản Chính phủ)
+  const watchSource2Url =
+    'https://vanban.chinhphu.vn/he-thong-van-ban?classid=1&mode=1';
+  let watchSource2 = await db.query.crawlWatchSource.findFirst({
+    where: eq(crawlWatchSource.parserKey, 'vanban_chinhphu'),
+  });
+
+  if (!watchSource2) {
+    const [insertedSource2] = await db
+      .insert(crawlWatchSource)
+      .values({
+        name: 'Hệ thống văn bản Chính phủ (vanban.chinhphu.vn)',
+        listingUrl: watchSource2Url,
+        sourceType: 'government_portal',
+        parserKey: 'vanban_chinhphu',
+        isActive: true,
+        lastCheckStatus: 'never_run',
+        consecutiveFailures: 0,
+      })
+      .returning();
+    console.log('✅ Đã tạo crawl_watch_source 2:', insertedSource2.name);
+  } else {
+    await db
+      .update(crawlWatchSource)
+      .set({ listingUrl: watchSource2Url })
+      .where(eq(crawlWatchSource.id, watchSource2.id));
+    console.log('ℹ️ Đã cập nhật crawl_watch_source 2:', watchSource2.name);
+  }
+
+
   console.log('🎉 Seed dữ liệu thành công!');
+
+
   process.exit(0);
 }
 

@@ -4,10 +4,22 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 
+import fs from 'node:fs';
+
 if (!process.env.DATABASE_URL) {
   loadEnv({ path: path.resolve(process.cwd(), '.env') });
   loadEnv({ path: path.resolve(process.cwd(), '../../.env') });
 }
+
+// Chỉ replace @postgres: bằng @127.0.0.1: nếu đang chạy trên host CLI (không phải trong Docker container)
+const isDocker = fs.existsSync('/.dockerenv') || process.env.IS_DOCKER === 'true';
+if (!isDocker && process.env.DATABASE_URL?.includes('@postgres:')) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL.replace(
+    '@postgres:',
+    '@127.0.0.1:'
+  );
+}
+
 
 // Khắc phục bug pg-pool/V8 trên Windows khi DB down: pg-pool gọi new AggregateError(null, msg) làm V8 C++ AggregateError crash vì "object null is not iterable"
 if (typeof globalThis.AggregateError === 'function') {

@@ -1,0 +1,1 @@
+ALTER TABLE "crawl_watch_source" ADD COLUMN "parser_key" text DEFAULT 'congbao_chinhphu' NOT NULL;

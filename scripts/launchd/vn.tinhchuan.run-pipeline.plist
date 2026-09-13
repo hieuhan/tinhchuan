@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Tên định danh duy nhất cho launchd job -->
+    <key>Label</key>
+    <string>vn.tinhchuan.run-pipeline</string>
+
+    <!-- Thư mục làm việc chính của dự án -->
+    <key>WorkingDirectory</key>
+    <string>/Users/hanminhhoang/tinhchuan</string>
+
+    <!-- Lệnh và tham số thực thi pipeline đầy đủ 3 giai đoạn -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/Users/hanminhhoang/tinhchuan/node_modules/.bin/tsx</string>
+        <string>/Users/hanminhhoang/tinhchuan/apps/backend/jobs/run-pipeline.ts</string>
+    </array>
+
+    <!-- Khung giờ chạy định kỳ: 6:00 sáng hàng ngày -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- Đường dẫn lưu file log stdout và stderr -->
+    <key>StandardOutPath</key>
+    <string>/Users/hanminhhoang/tinhchuan/logs/run-pipeline/out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/hanminhhoang/tinhchuan/logs/run-pipeline/err.log</string>
+
+    <!-- Biến môi trường hệ thống -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

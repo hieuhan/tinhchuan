@@ -8,7 +8,10 @@ import {
   jsonb,
   pgEnum,
   primaryKey,
+  uuid,
+  boolean,
 } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 // Enums
 export const usersStatusEnum = pgEnum('users_status', ['active', 'disabled']);
@@ -38,6 +41,38 @@ export const contentPageStatusEnum = pgEnum('content_page_status', [
   'published',
 ]);
 
+export const crawlWatchSourceTypeEnum = pgEnum('crawl_watch_source_type', [
+  'government_portal',
+  'news',
+  'other',
+]);
+
+export const crawlWatchSourceLastCheckStatusEnum = pgEnum(
+  'crawl_watch_source_last_check_status',
+  ['success', 'failed', 'never_run']
+);
+
+export const crawlDetectedItemAiClassificationEnum = pgEnum(
+  'crawl_detected_item_ai_classification',
+  ['pending', 'relevant', 'not_relevant']
+);
+
+export const crawlDetectedItemExtractionMethodEnum = pgEnum(
+  'crawl_detected_item_extraction_method',
+  ['text_layer', 'vision_ocr']
+);
+
+export const crawlDetectedItemStatusEnum = pgEnum(
+  'crawl_detected_item_status',
+  [
+    'pending_classification',
+    'pending_review',
+    'confirmed',
+    'rejected',
+    'content_generated',
+  ]
+);
+
 // 1. users: Tài khoản quản trị nội bộ
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -59,6 +94,7 @@ export const legalSource = pgTable('legal_source', {
   issuedDate: date('issued_date').notNull(),
   effectiveDate: date('effective_date').notNull(),
   sourceUrl: text('source_url').notNull(),
+  sourceFileUrl: text('source_file_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -130,3 +166,80 @@ export const contentPageTaxRule = pgTable(
     primaryKey({ columns: [table.contentPageId, table.taxRuleVersionId] }),
   ]
 );
+
+// 8. crawl_watch_source: Nguồn theo dõi scan văn bản pháp luật mới
+export const crawlWatchSource = pgTable('crawl_watch_source', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  listingUrl: text('listing_url').notNull(),
+  sourceType: crawlWatchSourceTypeEnum('source_type').notNull(),
+  parserKey: text('parser_key').default('congbao_chinhphu').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastCheckedAt: timestamp('last_checked_at'),
+  lastCheckStatus: crawlWatchSourceLastCheckStatusEnum('last_check_status')
+    .default('never_run')
+    .notNull(),
+  lastCheckError: text('last_check_error'),
+  consecutiveFailures: integer('consecutive_failures').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 9. crawl_detected_item: Văn bản mới phát hiện từ nguồn theo dõi
+export const crawlDetectedItem = pgTable('crawl_detected_item', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  watchSourceId: uuid('watch_source_id')
+    .references(() => crawlWatchSource.id)
+    .notNull(),
+  title: text('title').notNull(),
+  detectUrl: text('detect_url').unique().notNull(),
+  detectedAt: timestamp('detected_at').defaultNow().notNull(),
+  aiClassification: crawlDetectedItemAiClassificationEnum('ai_classification')
+    .default('pending')
+    .notNull(),
+  aiClassificationReason: text('ai_classification_reason'),
+  sourceFileUrl: text('source_file_url'), // Object key (đường dẫn tương đối) của file trong bucket MinIO (vd: detected-items/uuid.pdf)
+  extractionMethod: crawlDetectedItemExtractionMethodEnum('extraction_method'),
+  extractedText: text('extracted_text'),
+  status: crawlDetectedItemStatusEnum('status')
+    .default('pending_classification')
+    .notNull(),
+  legalSourceId: integer('legal_source_id').references(() => legalSource.id),
+  telegramMessageId: text('telegram_message_id'),
+  adminNotes: text('admin_notes'),
+  // Metadata tham khảo trích xuất tự động từ trang nguồn, dùng để prefill form xác nhận cho admin - KHÔNG phải nguồn xác thực cuối cùng
+  documentNumber: text('document_number'),
+  documentType: text('document_type'),
+  issuingBody: text('issuing_body'),
+  issuedDate: date('issued_date'),
+  effectiveDate: date('effective_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Relations
+export const crawlWatchSourceRelations = relations(
+  crawlWatchSource,
+  ({ many }) => ({
+    detectedItems: many(crawlDetectedItem),
+  })
+);
+
+export const crawlDetectedItemRelations = relations(
+  crawlDetectedItem,
+  ({ one }) => ({
+    watchSource: one(crawlWatchSource, {
+      fields: [crawlDetectedItem.watchSourceId],
+      references: [crawlWatchSource.id],
+    }),
+    legalSource: one(legalSource, {
+      fields: [crawlDetectedItem.legalSourceId],
+      references: [legalSource.id],
+    }),
+  })
+);
+
+export const legalSourceRelations = relations(legalSource, ({ many }) => ({
+  detectedItems: many(crawlDetectedItem),
+}));
+

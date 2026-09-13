@@ -29,3 +29,6 @@
 | Kê khai theo doanh thu thực tế | `actualRevenueDeclaration` | |
 | Chuyển nhượng bất động sản | `realEstateTransfer` | |
 | Quyết toán thuế cuối năm | `annualTaxSettlement` | |
+| Nguồn theo dõi scan văn bản | `crawlWatchSource` | Tên bảng: `crawl_watch_source` |
+| Văn bản mới phát hiện | `crawlDetectedItem` | Tên bảng: `crawl_detected_item` |
+
