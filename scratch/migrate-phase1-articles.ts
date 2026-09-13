@@ -1,3 +1,4 @@
+// Script này đã chạy 1 lần, KHÔNG chạy lại - chỉ dùng làm tài liệu tham khảo.
 import { db, contentPage } from '@tinhchuan/database';
 import { eq } from 'drizzle-orm';
 
